@@ -16,4 +16,6 @@ Dataset DOI: https://doi.org/10.18112/openneuro.ds000001.v1.0.0
 
 CC0 terms: https://creativecommons.org/publicdomain/zero/1.0/
 
+`changed-manifest.json` is an authored counterfactual derived from this fixture: only `RepetitionTime` is changed from `2.0` to `3.0`. It is distributed under the same CC0 data terms and is used to demonstrate impact analysis; it does not describe a real acquisition or a later source snapshot.
+
 No imaging bytes are redistributed. The manifest is an explicit subset containing subject 01's three BOLD paths and the root BOLD sidecar; it is not a complete dataset inventory or a BIDS compliance certificate. The original dataset declares BIDS 1.0.0; this example exercises inheritance rules, not migration or validation against the entire 1.11.2 schema.

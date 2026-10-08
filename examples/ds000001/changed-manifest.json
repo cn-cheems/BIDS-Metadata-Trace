@@ -1,0 +1,16 @@
+{
+  "files": [
+    "sub-01/func/sub-01_task-balloonanalogrisktask_run-01_bold.nii.gz",
+    "sub-01/func/sub-01_task-balloonanalogrisktask_run-02_bold.nii.gz",
+    "sub-01/func/sub-01_task-balloonanalogrisktask_run-03_bold.nii.gz"
+  ],
+  "sidecars": [
+    {
+      "path": "task-balloonanalogrisktask_bold.json",
+      "metadata": {
+        "RepetitionTime": 3.0,
+        "TaskName": "balloon analog risk task"
+      }
+    }
+  ]
+}

@@ -147,3 +147,29 @@ test "unknown query then successful query proves no sticky error state" {
   assert_eq(code, "unknown_data_path")
   assert_eq(index.resolve(scan()).to_json(), "{\"RepetitionTime\":2}")
 }
+
+///|
+test "maximum sidecar depth remains reloadable inside a manifest envelope" {
+  let text = "{\"x\":" + "[".repeat(63) + "0" + "]".repeat(63) + "}"
+  let index = sample(text)
+  let restored = @trace.DatasetIndex::from_json(index.to_manifest_json())
+  assert_eq(restored.to_manifest_json(), index.to_manifest_json())
+  assert_eq(restored.compare(index).changed_count(), 0)
+}
+
+///|
+test "oversized aggregate snapshots fail rather than exporting unreloadable data" {
+  let text = "{\"x\":\"" + "a".repeat(1100000) + "\"}"
+  let code = try {
+    @trace.DatasetIndex::from_manifest([], [
+      @trace.SidecarInput::new("bold.json", text),
+      @trace.SidecarInput::new("T1w.json", text),
+    ])
+    |> ignore
+    "success"
+  } catch {
+    @trace.TraceError(d) => d.code
+  }
+  assert_eq(code, "snapshot_limit")
+  assert_eq(sample("{}").resolve(scan()).to_json(), "{}")
+}

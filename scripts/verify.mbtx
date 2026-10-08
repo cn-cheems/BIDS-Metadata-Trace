@@ -38,6 +38,17 @@ async fn main {
     "error_count": Number(1.0, ..),
     "entries": Array([{"status": String("error"), ..}, {"status": String("resolved"), ..}]), ..
   } else { fail("Audit must report a failed query then a successful one.") }
+  let compared = @shell.Cmd("moon", ["run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "diff", "examples/ds000001/manifest.json", "examples/ds000001/changed-manifest.json"], env~).output()
+  compared.check()
+  guard @json.parse(compared.stdout()) is {
+    "changed_count": Number(3.0, ..), "error_count": Number(0.0, ..), "entries": Array(impacts), ..
+  } && impacts.length() == 3 else { fail("The synthetic root edit must impact all three real scan paths.") }
+  for impact in impacts {
+    guard impact is { "kind": String("changed"), "changes": Array([{
+      "field": String("RepetitionTime"), "kind": String("value_changed"),
+      "before": Number(2.0, ..), "after": Number(3.0, ..), ..
+    }]), .. } else { fail("Each scan must show exactly the repetition-time change.") }
+  }
   @shell.Cmd("git", ["diff", "--check"]).run()
   println("Verified core targets and real-data Wasm CLI.")
 }

@@ -176,7 +176,11 @@ fn KeyScanner::value(self : KeyScanner) -> Json raise TraceError {
 }
 
 ///|
-fn parse_source(path : String, text : String) -> Json raise TraceError {
+fn parse_source(
+  path : String,
+  text : String,
+  container_limit? : Int = 64,
+) -> Json raise TraceError {
   if text.length() > 2097152 {
     reject(
       "input_limit", path, "JSON exceeds 2,097,152 UTF-16 code units; split this input.",
@@ -200,11 +204,13 @@ fn parse_source(path : String, text : String) -> Json raise TraceError {
       quoted = true
     } else if c == '{' || c == '[' {
       depth += 1
-      if depth > 64 {
+      if depth > container_limit {
         reject(
           "depth_limit",
           path,
-          "JSON nesting exceeds 64 containers; simplify this source.",
+          "JSON nesting exceeds " +
+          container_limit.to_string() +
+          " containers; simplify this source.",
           offset~,
         )
       }

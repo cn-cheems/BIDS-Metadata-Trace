@@ -21,7 +21,9 @@ fn expect_keys(
 /// Read the strict v1 manifest: {"files":[paths],"sidecars":[{"path":path,"metadata":object}]}.
 /// Duplicate keys are checked throughout, before any data is consumed.
 pub fn DatasetIndex::from_json(text : String) -> DatasetIndex raise TraceError {
-  guard parse_source("<manifest>", text) is Object(fields) else {
+  // The envelope adds three containers. Each extracted sidecar is reparsed
+  // at its own 64-container metadata limit during index construction.
+  guard parse_source("<manifest>", text, container_limit=67) is Object(fields) else {
     reject(
       "invalid_manifest", "<manifest>", "Expected an object containing files and sidecars arrays.",
     )

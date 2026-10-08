@@ -60,7 +60,14 @@ pub fn DatasetIndex::from_manifest(
       depth
     }
   })
-  { files: data, sidecars: metadata, }
+  let index : DatasetIndex = { files: data, sidecars: metadata, }
+  // Every accepted snapshot must be reloadable through the same public API.
+  if index.to_manifest_json().length() > 2097152 {
+    reject(
+      "snapshot_limit", "<manifest>", "Canonical snapshot exceeds 2,097,152 UTF-16 code units; split the snapshot before constructing an index.",
+    )
+  }
+  index
 }
 
 ///|

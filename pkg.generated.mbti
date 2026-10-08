@@ -33,6 +33,7 @@ pub struct DatasetIndex {
 }
 pub fn DatasetIndex::audit(Self, Array[String]) -> AuditReport
 pub fn DatasetIndex::audit_all(Self) -> AuditReport
+pub fn DatasetIndex::compare(Self, Self) -> ImpactReport
 pub fn DatasetIndex::data_paths(Self) -> Array[String]
 pub fn DatasetIndex::from_json(String) -> Self raise TraceError
 pub fn DatasetIndex::from_manifest(Array[String], Array[SidecarInput]) -> Self raise TraceError
@@ -52,11 +53,58 @@ pub fn Diagnostic::to_json(Self) -> Json
 pub fn Diagnostic::to_report_json(Self) -> String
 pub fn Diagnostic::to_repr(Self) -> @debug.Repr
 
+pub struct FieldChange {
+  // private fields
+}
+pub fn FieldChange::after_json(Self) -> String?
+pub fn FieldChange::after_trace(Self) -> Array[FieldOrigin]
+pub fn FieldChange::before_json(Self) -> String?
+pub fn FieldChange::before_trace(Self) -> Array[FieldOrigin]
+pub fn FieldChange::key(Self) -> String
+pub fn FieldChange::kind(Self) -> FieldChangeKind
+
+pub(all) enum FieldChangeKind {
+  Added
+  Removed
+  ValueChanged
+  ProvenanceChanged
+} derive(Eq)
+pub fn FieldChangeKind::equal(Self, Self) -> Bool
+pub fn FieldChangeKind::not_equal(Self, Self) -> Bool
+
 pub struct FieldOrigin {
   // private fields
 }
 pub fn FieldOrigin::path(Self) -> String
 pub fn FieldOrigin::value(Self) -> Json
+
+pub struct ImpactEntry {
+  // private fields
+}
+pub fn ImpactEntry::after(Self) -> AuditEntry?
+pub fn ImpactEntry::before(Self) -> AuditEntry?
+pub fn ImpactEntry::changes(Self) -> Array[FieldChange]
+pub fn ImpactEntry::kind(Self) -> ImpactKind
+pub fn ImpactEntry::path(Self) -> String
+pub fn ImpactEntry::sources_changed(Self) -> Bool
+
+pub(all) enum ImpactKind {
+  Unchanged
+  Changed
+  Added
+  Removed
+  Unresolved
+} derive(Eq)
+pub fn ImpactKind::equal(Self, Self) -> Bool
+pub fn ImpactKind::not_equal(Self, Self) -> Bool
+
+pub struct ImpactReport {
+  // private fields
+}
+pub fn ImpactReport::changed_count(Self) -> Int
+pub fn ImpactReport::entries(Self) -> Array[ImpactEntry]
+pub fn ImpactReport::error_count(Self) -> Int
+pub fn ImpactReport::to_json(Self) -> String
 
 pub struct ResolvedMetadata {
   // private fields

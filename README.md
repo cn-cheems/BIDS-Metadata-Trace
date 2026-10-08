@@ -40,6 +40,7 @@ Import `cn-cheems/bids_metadata_trace` as `@trace` in your `moon.pkg`. This modu
 - `resolved.to_json()` exports effective metadata; `to_report_json()` includes applied sidecars and field history.
 - `index.to_manifest_json()` exports the complete input snapshot for reproducible reloading.
 - `index.audit(paths)` retains every query occurrence in request order, including duplicates. `audit_all()` uses sorted indexed paths. `report.entries()` returns success or diagnostic per query; `error_count()` and `to_json()` support release checks.
+- `before.compare(after)` reports the sorted union of scan paths, with `ImpactKind`, typed `FieldChangeKind`, full before/after evidence, per-field histories and source-chain changes. `changed_count()` excludes indeterminate scans; always also inspect `error_count()`.
 
 See the compiler-generated [public interface](pkg.generated.mbti) and [executable library examples](USAGE.mbt.md).
 
@@ -48,7 +49,7 @@ See the compiler-generated [public interface](pkg.generated.mbti) and [executabl
 - Single raw MRI dataset; `bold` in `func`, `T1w` in `anat`, `dwi` in `dwi`; `.nii` and `.nii.gz` paths plus `.json` sidecars.
 - Root, participant, optional session, and corresponding datatype directories. Filename participant/session entities must agree with directory scope.
 - Ordered entities: `sub`, `ses`, `task`, `acq`, `ce`, `rec`, `dir`, `run`, `echo`, `part`, `chunk`. Decimal index entities compare without leading zeroes; labels compare exactly and case-colliding labels are rejected.
-- UTF-8 JSON via the CLI; well-formed Unicode strings; at most 64 nested containers and 2,097,152 UTF-16 code units per parsed source. The CLI also rejects manifests larger than 8 MiB on disk.
+- UTF-8 JSON via the CLI; well-formed Unicode strings; at most 64 nested metadata containers and 2,097,152 UTF-16 code units per parsed source. The complete canonical snapshot is also bounded to 2,097,152 code units at construction, guaranteeing it can be reloaded. Manifest envelopes allow three additional containers. The CLI also rejects manifests larger than 8 MiB on disk.
 - Core library: Wasm, Wasm-GC, JavaScript and Native. CLI: Wasm under Moonrun only; CI runs on Linux, macOS and Windows. The filesystem CLI is not a generic browser/WASI embedding. These are tested targets, not claims about every host or embedding runtime.
 
 Other suffixes/entities, derivative/auxiliary trees, non-JSON inheritance, URLs, absolute paths, parent traversal and backslash dataset paths are rejected. This profile does not validate every MRI schema constraint (including modality-specific entity combinations), required acquisition fields, image headers, or dataset-wide BIDS compliance. An empty result means no applicable sidecar was supplied; it is not a validity certificate.
@@ -74,7 +75,7 @@ Tests cover inheritance, source histories, ambiguity, scope errors, numeric pres
 
 ## Roadmap
 
-Implemented: inheritance/provenance and recoverable batch audit. Next: comparison of two snapshots to identify changed effective values and provenance. Broader data profiles will require explicit specification and test coverage. Filesystem discovery and full BIDS validation are not implemented.
+Implemented: inheritance/provenance, recoverable batch audit and snapshot impact comparison. Next: explicit manifest discovery with a completeness report, then additional raw-data profiles backed by specification and fixtures. These require separate implementation and are not available now. Full BIDS validation is not implemented.
 
 ## Batch review example
 
@@ -84,6 +85,18 @@ moon run cmd/main --target wasm -- audit examples/ds000001/manifest.json absent 
 ```
 
 The first command reports all three real scans. The second deliberately requests an unknown path, then a real scan: stdout contains both outcomes and `error_count: 1`; process exit is 1. A query error does not stop the batch. An invalid manifest or IO failure rejects the entire batch and writes a diagnostic to stderr. Exit 2 means usage error. An empty query list in the library yields an empty report; it never implicitly audits everything.
+
+## Snapshot impact example
+
+```sh
+moon run cmd/main --target wasm -- diff examples/ds000001/manifest.json examples/ds000001/changed-manifest.json
+```
+
+The second manifest is a **synthetic edit**, changing the real fixture's root `RepetitionTime` from `2.0` to `3.0`. It is not another real acquisition. All three real scan paths show `value_changed`; `TaskName` stays unchanged. The command exits 0 when all comparisons are determinate, even when changes exist. Exit 1 means input/IO failure or an indeterminate scan; a completed report retains all scan outcomes on stdout.
+
+Scan kinds are `unchanged`, `changed`, `added`, `removed`, and `unresolved`. A resolution error on either side takes priority over addition/removal and suppresses speculative field differences. Reports include both sides' diagnostics. Field kinds are `added`, `removed`, `value_changed`, and `provenance_changed`; the last means the effective value is identical but its assignment history differs. Empty sidecar edits can change `sources_changed` without field differences.
+
+Comparison sorts object keys, preserves array order, and compares **numeric tokens exactly**: `2`, `2.0` and `2e0` are distinguishable. It is a lossless metadata edit audit, not numeric or scientific equivalence analysis. JSON report presence flags distinguish a missing field from present `null`; the library's `before_json()`/`after_json()` distinguish `None` from `Some("null")`. Unchanged entries remain in the report. Omitted sidecars, image contents and edits to nonapplicable sources are outside scan-impact inference.
 
 ## Sources and license
 
