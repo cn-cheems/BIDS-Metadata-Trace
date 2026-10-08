@@ -41,6 +41,7 @@ Import `cn-cheems/bids_metadata_trace` as `@trace` in your `moon.pkg`. This modu
 - `index.to_manifest_json()` exports the complete input snapshot for reproducible reloading.
 - `index.audit(paths)` retains every query occurrence in request order, including duplicates. `audit_all()` uses sorted indexed paths. `report.entries()` returns success or diagnostic per query; `error_count()` and `to_json()` support release checks.
 - `before.compare(after)` reports the sorted union of scan paths, with `ImpactKind`, typed `FieldChangeKind`, full before/after evidence, per-field histories and source-chain changes. `changed_count()` excludes indeterminate scans; always also inspect `error_count()`.
+- `impact.release_check(ReleasePolicy)` produces a reusable release decision, sorted affected/unresolved paths and the complete impact evidence. `AllChanges` includes provenance; `EffectiveValues` checks exact values and scan inventory. `Indeterminate` always takes priority over detected changes.
 
 See the compiler-generated [public interface](pkg.generated.mbti) and [executable library examples](USAGE.mbt.md).
 
@@ -75,7 +76,7 @@ Tests cover inheritance, source histories, ambiguity, scope errors, numeric pres
 
 ## Roadmap
 
-Implemented: inheritance/provenance, recoverable batch audit and snapshot impact comparison. Next: explicit manifest discovery with a completeness report, then additional raw-data profiles backed by specification and fixtures. These require separate implementation and are not available now. Full BIDS validation is not implemented.
+Implemented: inheritance/provenance, recoverable batch audit, snapshot impact comparison and policy-based release checks. Next: explicit manifest discovery with a completeness report, then additional raw-data profiles backed by specification and fixtures. These require separate implementation and are not available now. Full BIDS validation is not implemented.
 
 ## Batch review example
 
@@ -84,7 +85,7 @@ moon run cmd/main --target wasm -- audit examples/ds000001/manifest.json
 moon run cmd/main --target wasm -- audit examples/ds000001/manifest.json absent sub-01/func/sub-01_task-balloonanalogrisktask_run-01_bold.nii.gz
 ```
 
-The first command reports all three real scans. The second deliberately requests an unknown path, then a real scan: stdout contains both outcomes and `error_count: 1`; process exit is 1. A query error does not stop the batch. An invalid manifest or IO failure rejects the entire batch and writes a diagnostic to stderr. Exit 2 means usage error. An empty query list in the library yields an empty report; it never implicitly audits everything.
+The first command reports all three real scans. The second deliberately requests an unknown path, then a real scan: stdout contains both outcomes and `error_count: 1`; process exit is 1. A query error does not stop the batch. An invalid manifest or IO failure rejects the entire batch and writes a diagnostic to stderr. Usage errors print usage to stderr and also exit 1. An empty query list in the library yields an empty report; it never implicitly audits everything.
 
 ## Snapshot impact example
 
@@ -97,6 +98,36 @@ The second manifest is a **synthetic edit**, changing the real fixture's root `R
 Scan kinds are `unchanged`, `changed`, `added`, `removed`, and `unresolved`. A resolution error on either side takes priority over addition/removal and suppresses speculative field differences. Reports include both sides' diagnostics. Field kinds are `added`, `removed`, `value_changed`, and `provenance_changed`; the last means the effective value is identical but its assignment history differs. Empty sidecar edits can change `sources_changed` without field differences.
 
 Comparison sorts object keys, preserves array order, and compares **numeric tokens exactly**: `2`, `2.0` and `2e0` are distinguishable. It is a lossless metadata edit audit, not numeric or scientific equivalence analysis. JSON report presence flags distinguish a missing field from present `null`; the library's `before_json()`/`after_json()` distinguish `None` from `Some("null")`. Unchanged entries remain in the report. Omitted sidecars, image contents and edits to nonapplicable sources are outside scan-impact inference.
+
+## Release checks in CI
+
+`diff` is an inspection command that succeeds for determinate changes. `check` turns the comparison into a policy decision and a failing process status, suitable for a dataset release job:
+
+```sh
+moon run cmd/main --target wasm -- check baseline.json candidate.json --effective-only
+```
+
+The default policy is `AllChanges`; omit `--effective-only` to also block provenance edits. Unsupported options fail explicitly. Both policies retain the entire impact report in the JSON `impact` field, including changes ignored by the selected policy.
+
+| Event | Default / AllChanges | --effective-only / EffectiveValues |
+| --- | --- | --- |
+| Effective field added, removed or value token changed | Fail | Fail |
+| Scan added or removed, even without metadata | Fail | Fail |
+| Assignment history or applied source chain changed only | Fail | Pass |
+| Resolution error in either snapshot | Indeterminate / fail | Indeterminate / fail |
+| No relevant changes or errors | Pass | Pass |
+
+Executable examples, requiring no private data:
+
+```sh
+moon run cmd/main --target wasm -- check examples/ds000001/manifest.json examples/ds000001/changed-manifest.json
+moon run cmd/main --target wasm -- check examples/ds000001/manifest.json examples/ds000001/provenance-manifest.json --effective-only
+moon run cmd/main --target wasm -- check examples/release-check/ambiguous-manifest.json examples/release-check/ambiguous-manifest.json
+```
+
+The first exits 1 with `decision: "changes_detected"` and three affected paths. The second exits 0 with `decision: "pass"`, while retaining run 01's synthetic provenance edit. Without `--effective-only` that edit fails. The third exits 1 with `decision: "indeterminate"`, unresolved paths and diagnostics from both sides; it cannot pass by comparing the same invalid snapshot to itself.
+
+The CLI uses **0 for success/pass, 1 for failure**. Current Moonrun normalizes nonzero WASI exit codes to 1, so scripts must use JSON `decision` to distinguish changes from indeterminate comparisons. Completed checks write reports to stdout; malformed input or IO failure writes a diagnostic to stderr and produces no completed report. Usage errors write usage to stderr. A `Pass` applies only to the selected policy and supplied snapshots; omitted sources remain the caller's responsibility and it does not certify BIDS compliance. Value checks retain the exact numeric-token semantics described above.
 
 ## Sources and license
 

@@ -23,3 +23,32 @@ test "a lower sidecar overrides one field without deleting another" {
   assert_eq(reload.resolve(path).to_report_json(), result.to_report_json())
 }
 ```
+
+Release checks consume existing comparison evidence without dropping it.
+
+```mbt check
+///|
+test "release policy distinguishes shadowed provenance from effective changes" {
+  let path = "sub-01/func/sub-01_task-rest_bold.nii"
+  let before = @trace.DatasetIndex::from_manifest([path], [
+    @trace.SidecarInput::new("task-rest_bold.json", "{\"x\":1}"),
+    @trace.SidecarInput::new(
+      "sub-01/func/sub-01_task-rest_bold.json", "{\"x\":3}",
+    ),
+  ])
+  let after = @trace.DatasetIndex::from_manifest([path], [
+    @trace.SidecarInput::new("task-rest_bold.json", "{\"x\":2}"),
+    @trace.SidecarInput::new(
+      "sub-01/func/sub-01_task-rest_bold.json", "{\"x\":3}",
+    ),
+  ])
+  let impact = before.compare(after)
+  let effective = impact.release_check(@trace.ReleasePolicy::EffectiveValues)
+  assert_true(effective.decision() == @trace.ReleaseDecision::Pass)
+  assert_true(
+    impact.release_check(@trace.ReleasePolicy::AllChanges).decision() ==
+    @trace.ReleaseDecision::ChangesDetected,
+  )
+  assert_eq(effective.impact().to_json(), impact.to_json())
+}
+```

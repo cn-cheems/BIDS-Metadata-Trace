@@ -1,0 +1,7 @@
+{
+  "files": ["sub-01/func/sub-01_task-rest_bold.nii"],
+  "sidecars": [
+    {"path": "bold.json", "metadata": {}},
+    {"path": "task-rest_bold.json", "metadata": {}}
+  ]
+}

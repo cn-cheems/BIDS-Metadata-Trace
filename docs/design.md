@@ -12,6 +12,8 @@ The first slice is a complete manifest -> validated source snapshot -> inheritan
 
 Recoverable query auditing is implemented: every requested occurrence retains a success or diagnostic, and ambiguity does not stop unaffected queries. Snapshot impact comparison is also implemented: the sorted scan union distinguishes value, history and source-chain edits, retaining errors as indeterminate rather than claiming no change. These are coherent additions, not parser fragments or commit-count milestones.
 
+Release checks complete the release-review workflow: a curator selects whether to block effective-value/inventory changes or all provenance changes; CI receives a process failure and downstream library users receive a typed decision. Errors always take priority, while determinate changes and policy-ignored evidence remain available. Decisions do not certify source completeness or BIDS conformance.
+
 ## Safety of interpretation
 
 The raw MRI profile is versioned by documented scope rather than a claim of complete BIDS conformance. Unknown metadata values are preserved; unsupported selectors and unknown manifest controls fail. No input source is rewritten. Same-level ambiguity is a resolution error, so an index can still be used for unaffected scans. JSON syntax and Unicode validation use MoonBit core; duplicate decoded keys and number lexeme preservation are handled by a bounded additional source walk.

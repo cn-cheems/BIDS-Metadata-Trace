@@ -300,40 +300,41 @@ fn AuditEntry::impact_value(self : AuditEntry) -> Json {
 
 ///|
 /// Includes full before/after evidence even for unchanged and unresolved scans.
+fn ImpactReport::report_value(self : ImpactReport) -> Json {
+  Json::object({
+    "changed_count": Json::number(self.changed_count().to_double()),
+    "error_count": Json::number(self.error_count().to_double()),
+    "entries": Json::array(
+      self.entries.map(e => {
+        Json::object({
+          "data_path": Json::string(e.path),
+          "kind": Json::string(impact_kind_name(e.kind)),
+          "before": e.before
+          .map(AuditEntry::impact_value)
+          .unwrap_or(Json::null()),
+          "after": e.after.map(AuditEntry::impact_value).unwrap_or(Json::null()),
+          "sources_changed": Json::boolean(e.sources_changed),
+          "changes": Json::array(
+            e.changes.map(c => {
+              Json::object({
+                "field": Json::string(c.key),
+                "kind": Json::string(change_kind_name(c.kind)),
+                "before_present": Json::boolean(c.before is Some(_)),
+                "after_present": Json::boolean(c.after is Some(_)),
+                "before": c.before.unwrap_or(Json::null()),
+                "after": c.after.unwrap_or(Json::null()),
+                "before_trace": origins_json(c.before_origins),
+                "after_trace": origins_json(c.after_origins),
+              })
+            }),
+          ),
+        })
+      }),
+    ),
+  })
+}
+
+///|
 pub fn ImpactReport::to_json(self : ImpactReport) -> String {
-  canonical_json(
-    Json::object({
-      "changed_count": Json::number(self.changed_count().to_double()),
-      "error_count": Json::number(self.error_count().to_double()),
-      "entries": Json::array(
-        self.entries.map(e => {
-          Json::object({
-            "data_path": Json::string(e.path),
-            "kind": Json::string(impact_kind_name(e.kind)),
-            "before": e.before
-            .map(AuditEntry::impact_value)
-            .unwrap_or(Json::null()),
-            "after": e.after
-            .map(AuditEntry::impact_value)
-            .unwrap_or(Json::null()),
-            "sources_changed": Json::boolean(e.sources_changed),
-            "changes": Json::array(
-              e.changes.map(c => {
-                Json::object({
-                  "field": Json::string(c.key),
-                  "kind": Json::string(change_kind_name(c.kind)),
-                  "before_present": Json::boolean(c.before is Some(_)),
-                  "after_present": Json::boolean(c.after is Some(_)),
-                  "before": c.before.unwrap_or(Json::null()),
-                  "after": c.after.unwrap_or(Json::null()),
-                  "before_trace": origins_json(c.before_origins),
-                  "after_trace": origins_json(c.after_origins),
-                })
-              }),
-            ),
-          })
-        }),
-      ),
-    }),
-  )
+  canonical_json(self.report_value())
 }

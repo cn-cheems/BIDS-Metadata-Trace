@@ -17,6 +17,8 @@
 
 OpenNeuro ds000001 metadata and path subset are CC0; exact version and source are in [examples/ds000001/SOURCE.md](examples/ds000001/SOURCE.md). All other manifests and test cases are authored for this project and distributed under Apache-2.0. Synthetic mutations are not represented as real observations. No PyBIDS, bidser, BIDS validator or competing MoonBit implementation code/tests are copied.
 
+The release-check ambiguity example is an authored Apache-2.0 fixture. The effective-value and provenance policy rules are project behavior, not additional BIDS conformance rules. The two CC0 counterfactual manifests are explicitly marked in their source record.
+
 ## Related work checked on 2026-10-08
 
 - [MoonNIfTI](https://github.com/wangjiale6036-dotcom/moonnifti), MIT: voxel access and coordinate-preserving transformations.

@@ -3,6 +3,11 @@
 extern "wasm" fn exit(code : Int) -> Unit = "wasi_snapshot_preview1" "proc_exit"
 
 ///|
+fn usage() -> String {
+  "Usage: bids-metadata-trace resolve MANIFEST.json DATA_PATH | audit MANIFEST.json [DATA_PATH ...] | diff BEFORE.json AFTER.json | check BEFORE.json AFTER.json [--effective-only]"
+}
+
+///|
 async fn load_manifest(path : String) -> @trace.DatasetIndex {
   try {
     if @fs.file_size(path) > 8388608L {
@@ -33,22 +38,41 @@ async fn main {
   let args = @env.args()
   if args.length() == 2 && (args[1] == "--help" || args[1] == "-h") {
     println(
-      "Usage: bids-metadata-trace resolve MANIFEST.json DATA_PATH | audit MANIFEST.json [DATA_PATH ...] | diff BEFORE.json AFTER.json\nOutputs JSON. Exit: 0 success, 1 input/IO/query error, 2 usage error. Audit/diff retain all outcomes on stdout. Diff exits 0 for determinate changes.",
+      usage() +
+      "\nOutputs JSON. Exit: 0 success/pass, 1 failure. check defaults to all changes; --effective-only ignores provenance-only edits but retains their evidence. JSON decision distinguishes changes_detected from indeterminate. Input/IO errors produce a diagnostic on stderr instead of a completed report.",
     )
     return
   }
   if args.length() < 3 ||
     !(((args[1] == "resolve" || args[1] == "diff") && args.length() == 4) ||
-    args[1] == "audit") {
-    @stdio.stderr.write(
-      "Usage: bids-metadata-trace resolve MANIFEST.json DATA_PATH | audit MANIFEST.json [DATA_PATH ...] | diff BEFORE.json AFTER.json\n",
-    )
-    exit(2)
+    args[1] == "audit" ||
+    (
+      args[1] == "check" &&
+      (
+        args.length() == 4 ||
+        (args.length() == 5 && args[4] == "--effective-only")
+      )
+    )) {
+    @stdio.stderr.write(usage() + "\n")
+    exit(1)
     return
   }
   try {
     let index = load_manifest(args[2])
-    if args[1] == "diff" {
+    if args[1] == "check" {
+      let policy = if args.length() == 5 {
+        @trace.ReleasePolicy::EffectiveValues
+      } else {
+        @trace.ReleasePolicy::AllChanges
+      }
+      let check = index.compare(load_manifest(args[3])).release_check(policy)
+      println(check.to_json())
+      match check.decision() {
+        Pass => ()
+        ChangesDetected => exit(1)
+        Indeterminate => exit(1)
+      }
+    } else if args[1] == "diff" {
       let report = index.compare(load_manifest(args[3]))
       println(report.to_json())
       if report.error_count() > 0 {

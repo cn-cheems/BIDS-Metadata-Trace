@@ -49,6 +49,38 @@ async fn main {
       "before": Number(2.0, ..), "after": Number(3.0, ..), ..
     }]), .. } else { fail("Each scan must show exactly the repetition-time change.") }
   }
+  let fixture = "examples/ds000001/manifest.json"
+  let changed = "examples/ds000001/changed-manifest.json"
+  let provenance = "examples/ds000001/provenance-manifest.json"
+  let ambiguous = "examples/release-check/ambiguous-manifest.json"
+  for (before, after, options, expected_exit, decision, affected, unresolved) in [
+    (fixture, fixture, [], 0, "pass", 0, 0),
+    (fixture, changed, [], 1, "changes_detected", 3, 0),
+    (fixture, changed, ["--effective-only"], 1, "changes_detected", 3, 0),
+    (fixture, provenance, [], 1, "changes_detected", 1, 0),
+    (fixture, provenance, ["--effective-only"], 0, "pass", 0, 0),
+    (ambiguous, ambiguous, [], 1, "indeterminate", 0, 1),
+    (ambiguous, ambiguous, ["--effective-only"], 1, "indeterminate", 0, 1)
+  ] {
+    let args = ["run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "check", before, after]
+    args.append(options)
+    let output = @shell.Cmd("moon", args, env~).output()
+    guard output.exit_code() == expected_exit && @json.parse(output.stdout()) is {
+      "decision": String(actual), "affected_paths": Array(affected_paths),
+      "unresolved_paths": Array(unresolved_paths), "impact": {"entries": Array(_), ..}, ..
+    } && actual == decision && affected_paths.length() == affected && unresolved_paths.length() == unresolved else {
+      fail("Release check exit, decision or retained path evidence is incorrect.")
+    }
+  }
+  let missing = "examples/release-check/does-not-exist.json"
+  let input_error = @shell.Cmd("moon", ["run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "check", fixture, missing], env~).output()
+  guard input_error.exit_code() == 1 && input_error.stdout().is_empty() && @json.parse(input_error.stderr()) is {
+    "code": String("io_error"), "path": String(actual), ..
+  } && actual == missing else { fail("Missing snapshot must fail with its actual IO path, not an empty successful report.") }
+  let usage_error = @shell.Cmd("moon", ["run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "check", fixture, fixture, "--unknown"], env~).output()
+  guard usage_error.exit_code() == 1 && usage_error.stdout().is_empty() && usage_error.stderr().contains("Usage:") else {
+    fail("Unsupported release policy option must fail explicitly.")
+  }
   @shell.Cmd("git", ["diff", "--check"]).run()
   println("Verified core targets and real-data Wasm CLI.")
 }

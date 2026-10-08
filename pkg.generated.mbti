@@ -104,7 +104,33 @@ pub struct ImpactReport {
 pub fn ImpactReport::changed_count(Self) -> Int
 pub fn ImpactReport::entries(Self) -> Array[ImpactEntry]
 pub fn ImpactReport::error_count(Self) -> Int
+pub fn ImpactReport::release_check(Self, ReleasePolicy) -> ReleaseCheck
 pub fn ImpactReport::to_json(Self) -> String
+
+pub struct ReleaseCheck {
+  // private fields
+}
+pub fn ReleaseCheck::affected_paths(Self) -> Array[String]
+pub fn ReleaseCheck::decision(Self) -> ReleaseDecision
+pub fn ReleaseCheck::impact(Self) -> ImpactReport
+pub fn ReleaseCheck::policy(Self) -> ReleasePolicy
+pub fn ReleaseCheck::to_json(Self) -> String
+pub fn ReleaseCheck::unresolved_paths(Self) -> Array[String]
+
+pub(all) enum ReleaseDecision {
+  Pass
+  ChangesDetected
+  Indeterminate
+} derive(Eq)
+pub fn ReleaseDecision::equal(Self, Self) -> Bool
+pub fn ReleaseDecision::not_equal(Self, Self) -> Bool
+
+pub(all) enum ReleasePolicy {
+  EffectiveValues
+  AllChanges
+} derive(Eq)
+pub fn ReleasePolicy::equal(Self, Self) -> Bool
+pub fn ReleasePolicy::not_equal(Self, Self) -> Bool
 
 pub struct ResolvedMetadata {
   // private fields
