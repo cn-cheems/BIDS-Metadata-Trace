@@ -1,0 +1,31 @@
+import {
+  "moonbitlang/async@0.22.4",
+  "moonbitlang/async/shell",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+async fn main {
+  let env : Map[String, String] = Map([])
+  // Optional portable compiler; never change the machine's global PATH.
+  if @env.get_env_var("BIDS_TRACE_CC") is Some(compiler) { env["MOON_CC"] = compiler }
+  @shell.Cmd("moon", ["fmt"], env~).run()
+  @shell.Cmd("moon", ["info", "--target", "all"], env~).run()
+  @shell.Cmd("moon", ["check", "--target", "all", "--deny-warn"], env~).run()
+  for target in ["wasm", "wasm-gc", "js", "native"] {
+    @shell.Cmd("moon", ["test", "--target", target, "--deny-warn"], env~).run()
+  }
+  let path = "sub-01/func/sub-01_task-balloonanalogrisktask_run-01_bold.nii.gz"
+  let output = @shell.Cmd("moon", ["run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "resolve", "examples/ds000001/manifest.json", path], env~).output()
+  output.check()
+  guard @json.parse(output.stdout()) is {
+    "data_path": String(actual),
+    "metadata": { "RepetitionTime": Number(2.0, ..), .. },
+    "fields": { "RepetitionTime": Array([{"path": String(source), ..}]), .. },
+    ..
+  } && actual == path && source == "task-balloonanalogrisktask_bold.json" else {
+    fail("Real-data CLI report did not match the independently recorded fixture.")
+  }
+  @shell.Cmd("git", ["diff", "--check"]).run()
+  println("Verified core targets and real-data Wasm CLI.")
+}

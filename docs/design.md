@@ -1,0 +1,26 @@
+# Design boundary
+
+## Users and three workflows
+
+1. A scientific-data tool reads a BOLD scan's acquisition parameters even when no adjacent JSON exists. It submits a complete supported manifest, resolves the scan, and consumes fields with their winning source.
+2. A curator reviews a local acquisition override. Resolving before and after the edit reveals which assignment replaced which field, while fields absent from the local source stay inherited.
+3. A dataset release reviewer audits multiple scans. Same-level ambiguity and malformed or wrongly scoped sidecars must produce actionable diagnostics rather than arbitrary precedence. Correcting the source allows a fresh run without retained error state.
+
+## First independently useful capability
+
+The first slice is a complete manifest -> validated source snapshot -> inheritance -> field history -> deterministic report workflow. Both the public library and Wasm CLI accept arbitrary supported inputs. A real CC0 dataset subset is checked end to end. Filesystem discovery is deliberately separate: the snapshot's completeness is the caller's responsibility.
+
+The next capability is recoverable query auditing, followed by effective-value/provenance impact comparison. These are coherent additions, not parser fragments or commit-count milestones.
+
+## Safety of interpretation
+
+The raw MRI profile is versioned by documented scope rather than a claim of complete BIDS conformance. Unknown metadata values are preserved; unsupported selectors and unknown manifest controls fail. No input source is rewritten. Same-level ambiguity is a resolution error, so an index can still be used for unaffected scans. JSON syntax and Unicode validation use MoonBit core; duplicate decoded keys and number lexeme preservation are handled by a bounded additional source walk.
+
+## Architecture
+
+- Root package owns all public types and domain behavior; its private files separate source handling, selectors, manifests, resolution and reports.
+- `cmd/main` is the Moonrun/Wasm filesystem adapter. The root core has no filesystem, network, clock or process dependency.
+- Generated interfaces are committed and regenerated with `moon info --target all`.
+- `scripts/verify.mbtx` orchestrates validation using MoonBit, not shell parsing or generated Python/JavaScript scripts.
+
+Core targets are Wasm, Wasm-GC, JS and Native. The CLI uses Moonrun host IO on Wasm because current async Windows native IO requires MSVC; MinGW is not supported by that dependency. CI runs core tests and a checked Wasm CLI example on Linux, macOS and Windows; local evidence and remote results must be reported separately.
