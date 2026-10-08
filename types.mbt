@@ -124,7 +124,7 @@ pub fn ResolvedMetadata::to_json(self : ResolvedMetadata) -> String {
 }
 
 ///|
-pub fn ResolvedMetadata::to_report_json(self : ResolvedMetadata) -> String {
+fn ResolvedMetadata::report_value(self : ResolvedMetadata) -> Json {
   let fields : Map[String, Json] = Map([])
   for key in self.keys() {
     fields[key] = Json::array(
@@ -138,14 +138,17 @@ pub fn ResolvedMetadata::to_report_json(self : ResolvedMetadata) -> String {
       }),
     )
   }
-  canonical_json(
-    Json::object({
-      "data_path": Json::string(self.path),
-      "metadata": Json::object(self.values),
-      "applied_sidecars": Json::array(self.applied.map(Json::string)),
-      "fields": Json::object(fields),
-    }),
-  )
+  Json::object({
+    "data_path": Json::string(self.path),
+    "metadata": Json::object(self.values),
+    "applied_sidecars": Json::array(self.applied.map(Json::string)),
+    "fields": Json::object(fields),
+  })
+}
+
+///|
+pub fn ResolvedMetadata::to_report_json(self : ResolvedMetadata) -> String {
+  canonical_json(self.report_value())
 }
 
 ///|

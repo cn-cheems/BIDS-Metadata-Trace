@@ -10,7 +10,7 @@
 
 The first slice is a complete manifest -> validated source snapshot -> inheritance -> field history -> deterministic report workflow. Both the public library and Wasm CLI accept arbitrary supported inputs. A real CC0 dataset subset is checked end to end. Filesystem discovery is deliberately separate: the snapshot's completeness is the caller's responsibility.
 
-The next capability is recoverable query auditing, followed by effective-value/provenance impact comparison. These are coherent additions, not parser fragments or commit-count milestones.
+Recoverable query auditing is implemented: every requested occurrence retains a success or diagnostic, and ambiguity does not stop unaffected queries. The next capability is effective-value/provenance impact comparison. These are coherent additions, not parser fragments or commit-count milestones.
 
 ## Safety of interpretation
 

@@ -9,6 +9,7 @@ This is a bounded implementation of the [BIDS 1.11.2 inheritance principle](http
 Requires MoonBit stable v0.10.14. The CLI runs under Moonrun on the Wasm target and needs no C compiler. The module pins `moonbitlang/async` 0.22.4 for CLI filesystem access; the library uses core only. Native core compilation/testing separately requires a system C toolchain.
 
 ```sh
+moon update
 moon run cmd/main --target wasm -- resolve examples/ds000001/manifest.json sub-01/func/sub-01_task-balloonanalogrisktask_run-01_bold.nii.gz
 ```
 
@@ -38,6 +39,7 @@ Import `cn-cheems/bids_metadata_trace` as `@trace` in your `moon.pkg`. This modu
 - `resolved.get(key)` returns a defensive JSON copy. `resolved.trace(key)` gives assignments in root-to-leaf order; the last assignment wins.
 - `resolved.to_json()` exports effective metadata; `to_report_json()` includes applied sidecars and field history.
 - `index.to_manifest_json()` exports the complete input snapshot for reproducible reloading.
+- `index.audit(paths)` retains every query occurrence in request order, including duplicates. `audit_all()` uses sorted indexed paths. `report.entries()` returns success or diagnostic per query; `error_count()` and `to_json()` support release checks.
 
 See the compiler-generated [public interface](pkg.generated.mbti) and [executable library examples](USAGE.mbt.md).
 
@@ -72,7 +74,16 @@ Tests cover inheritance, source histories, ambiguity, scope errors, numeric pres
 
 ## Roadmap
 
-Next: recoverable batch audit of query results, then comparison of two snapshots to identify changed effective values and provenance. Broader data profiles will require explicit specification and test coverage. Filesystem discovery and full BIDS validation are not implemented.
+Implemented: inheritance/provenance and recoverable batch audit. Next: comparison of two snapshots to identify changed effective values and provenance. Broader data profiles will require explicit specification and test coverage. Filesystem discovery and full BIDS validation are not implemented.
+
+## Batch review example
+
+```sh
+moon run cmd/main --target wasm -- audit examples/ds000001/manifest.json
+moon run cmd/main --target wasm -- audit examples/ds000001/manifest.json absent sub-01/func/sub-01_task-balloonanalogrisktask_run-01_bold.nii.gz
+```
+
+The first command reports all three real scans. The second deliberately requests an unknown path, then a real scan: stdout contains both outcomes and `error_count: 1`; process exit is 1. A query error does not stop the batch. An invalid manifest or IO failure rejects the entire batch and writes a diagnostic to stderr. Exit 2 means usage error. An empty query list in the library yields an empty report; it never implicitly audits everything.
 
 ## Sources and license
 

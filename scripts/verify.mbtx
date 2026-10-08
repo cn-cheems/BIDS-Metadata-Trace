@@ -9,11 +9,13 @@ async fn main {
   let env : Map[String, String] = Map([])
   // Optional portable compiler; never change the machine's global PATH.
   if @env.get_env_var("BIDS_TRACE_CC") is Some(compiler) { env["MOON_CC"] = compiler }
+  if !@env.args().contains("--e2e-only") {
   @shell.Cmd("moon", ["fmt"], env~).run()
   @shell.Cmd("moon", ["info", "--target", "all"], env~).run()
   @shell.Cmd("moon", ["check", "--target", "all", "--deny-warn"], env~).run()
   for target in ["wasm", "wasm-gc", "js", "native"] {
     @shell.Cmd("moon", ["test", "--target", target, "--deny-warn"], env~).run()
+  }
   }
   let path = "sub-01/func/sub-01_task-balloonanalogrisktask_run-01_bold.nii.gz"
   let output = @shell.Cmd("moon", ["run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "resolve", "examples/ds000001/manifest.json", path], env~).output()
@@ -26,6 +28,16 @@ async fn main {
   } && actual == path && source == "task-balloonanalogrisktask_bold.json" else {
     fail("Real-data CLI report did not match the independently recorded fixture.")
   }
+  let batch = @shell.Cmd("moon", ["run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "audit", "examples/ds000001/manifest.json"], env~).output()
+  batch.check()
+  guard @json.parse(batch.stdout()) is {
+    "error_count": Number(0.0, ..), "entries": Array(entries), ..
+  } && entries.length() == 3 else { fail("Real-data audit must cover all three scans.") }
+  let recovered = @shell.Cmd("moon", ["run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "audit", "examples/ds000001/manifest.json", "absent", path], env~).output()
+  guard recovered.exit_code() != 0 && @json.parse(recovered.stdout()) is {
+    "error_count": Number(1.0, ..),
+    "entries": Array([{"status": String("error"), ..}, {"status": String("resolved"), ..}]), ..
+  } else { fail("Audit must report a failed query then a successful one.") }
   @shell.Cmd("git", ["diff", "--check"]).run()
   println("Verified core targets and real-data Wasm CLI.")
 }

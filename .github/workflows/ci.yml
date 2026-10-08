@@ -26,6 +26,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: moon version --all
+      - run: moon update
       - run: moon fmt
       - run: git diff --exit-code
       - run: moon info --target all
@@ -33,4 +34,4 @@ jobs:
       - run: moon check --target all --deny-warn
       - run: moon test --target all --deny-warn
       - name: Verify real-data CLI result and core targets
-        run: moon run scripts/verify.mbtx
+        run: moon run scripts/verify.mbtx -- --e2e-only

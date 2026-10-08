@@ -7,13 +7,14 @@ async fn main {
   let args = @env.args()
   if args.length() == 2 && (args[1] == "--help" || args[1] == "-h") {
     println(
-      "Usage: bids-metadata-trace resolve MANIFEST.json DATA_PATH\nOutputs a JSON provenance report. Exit: 0 success, 1 input/IO error, 2 usage error.",
+      "Usage: bids-metadata-trace resolve MANIFEST.json DATA_PATH | audit MANIFEST.json [DATA_PATH ...]\nOutputs JSON. Exit: 0 success, 1 input/IO/query error, 2 usage error. Audit retains all query outcomes on stdout.",
     )
     return
   }
-  if args.length() != 4 || args[1] != "resolve" {
+  if args.length() < 3 ||
+    !((args[1] == "resolve" && args.length() == 4) || args[1] == "audit") {
     @stdio.stderr.write(
-      "Usage: bids-metadata-trace resolve MANIFEST.json DATA_PATH\n",
+      "Usage: bids-metadata-trace resolve MANIFEST.json DATA_PATH | audit MANIFEST.json [DATA_PATH ...]\n",
     )
     exit(2)
     return
@@ -28,7 +29,19 @@ async fn main {
     }
     let text = @fs.read_file(args[2]).text()
     let index = @trace.DatasetIndex::from_json(text)
-    println(index.resolve(args[3]).to_report_json())
+    if args[1] == "audit" {
+      let report = if args.length() == 3 {
+        index.audit_all()
+      } else {
+        index.audit(args[3:].to_owned())
+      }
+      println(report.to_json())
+      if report.error_count() > 0 {
+        exit(1)
+      }
+    } else {
+      println(index.resolve(args[3]).to_report_json())
+    }
   } catch {
     @trace.TraceError(diagnostic) => {
       @stdio.stderr.write(diagnostic.to_report_json() + "\n")

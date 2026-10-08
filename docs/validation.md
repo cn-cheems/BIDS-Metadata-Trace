@@ -9,3 +9,7 @@ For local Native tests, a removable [LLVM-MinGW 20261006 UCRT x86_64](https://gi
 The file CLI runs on Wasm under Moonrun. The initial Native IO experiment failed because async's Windows native stubs require MSVC; it is not counted as a successful native CLI run. The core Native tests and Wasm CLI are separate evidence.
 
 CI is configured to run on Linux, macOS and Windows. A configuration alone is not proof of successful execution: consult the [actual Actions runs](https://github.com/cn-cheems/BIDS-Metadata-Trace/actions). This document does not claim a remote run has passed before its completion.
+
+The batch audit slice extends the suite to 25 tests per target, executed locally on all four targets. The checked CLI workflow includes all three OpenNeuro scan paths and an unknown query followed by a successful query, verifying recovery and nonzero exit without losing the report. CI uses the script's `--e2e-only` mode after its own formatting, interface and core checks, avoiding duplicate test execution.
+
+The initial remote run failed before compilation because fresh runners lacked a Mooncakes registry index (`module was not found in the registry`). CI now explicitly runs `moon update`; the initial failed run is not counted as platform validation.

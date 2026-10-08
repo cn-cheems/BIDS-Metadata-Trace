@@ -14,9 +14,25 @@ pub(all) suberror TraceError {
 pub fn TraceError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
+pub struct AuditEntry {
+  // private fields
+}
+pub fn AuditEntry::diagnostic(Self) -> Diagnostic?
+pub fn AuditEntry::path(Self) -> String
+pub fn AuditEntry::result(Self) -> ResolvedMetadata?
+
+pub struct AuditReport {
+  // private fields
+}
+pub fn AuditReport::entries(Self) -> Array[AuditEntry]
+pub fn AuditReport::error_count(Self) -> Int
+pub fn AuditReport::to_json(Self) -> String
+
 pub struct DatasetIndex {
   // private fields
 }
+pub fn DatasetIndex::audit(Self, Array[String]) -> AuditReport
+pub fn DatasetIndex::audit_all(Self) -> AuditReport
 pub fn DatasetIndex::data_paths(Self) -> Array[String]
 pub fn DatasetIndex::from_json(String) -> Self raise TraceError
 pub fn DatasetIndex::from_manifest(Array[String], Array[SidecarInput]) -> Self raise TraceError
