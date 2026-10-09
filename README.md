@@ -186,7 +186,7 @@ Every entry requires `path`, `set` and `remove`; only `edits` is allowed at the 
 
 The library/CLI never write source files. “All or nothing” means immutable snapshot planning, not a disk transaction. The final combined snapshot is rebuilt and bounded once, allowing a coordinated shrink/grow that would exceed the limit in an intermediate single edit. A failure returns no partial plan; an indeterminate final impact retains the complete plan with CLI exit 1. A determinate plan exits 0 even when changes exist. Default output contains the normalized batch, every edited source's old/new values, both full snapshots and one impact report. `--manifest-only` exports the final candidate for existing resolve/check/bundle workflows. `updated_sidecar_json(path)` returns `None` for sources not explicitly edited.
 
-Limits: 256 distinct existing sidecars, 2,097,152 UTF-16 units per parsed/canonical batch, 67 batch containers accommodating metadata64, and the existing per-sidecar/final-snapshot limits. CLI batch files also have an 8 MiB disk bound. Sidecar creation/deletion, nested patch operations, sequential same-source operations and disk application remain unsupported. Complete reports may exceed snapshot size because they retain repeated evidence.
+Limits: 256 distinct existing sidecars, 2,097,152 UTF-16 units per parsed/canonical batch, 67 batch containers accommodating metadata64, and the existing per-sidecar/final-snapshot limits. CLI batch files also have an 8 MiB disk bound. This patch API does not create/delete sidecars; use the separate source inventory planner below. Nested patch operations, sequential same-source operations and disk application remain unsupported. Complete reports may exceed snapshot size because they retain repeated evidence.
 
 ## Share and replay an offline review
 
@@ -230,6 +230,20 @@ moon run cmd/main --target wasm -- table examples/ds000001/provenance-manifest.j
 Dynamic path/value/source/trace/diagnostic cells start with `json:` followed by exact canonical JSON. After CSV decoding, remove exactly that prefix and parse the remainder as JSON (use a token-preserving parser for exact numbers). This preserves `2.0`, `-0`, large integers, unknown nested data, commas, quotes and escaped newlines; formula-like strings remain JSON strings behind a text prefix. It does not claim all spreadsheet applications preserve text automatically. Presence `true` with `json:null` means explicit null; `false` with empty value/source/trace means absent from a resolved scan. An error row has its complete diagnostic and empty presence/value/source/trace cells, meaning unknown rather than absent. Full assignment traces retain shadowed values.
 
 The CLI requires one or more distinct fields, audits all indexed scans, and exits 1 if any exported row is unresolved; library callers can select scans through `audit(paths)`. Empty library field selection exports the four base columns. Projection limits match cohort summaries (256 unique fields); complete CSV output is limited to 16,777,216 UTF-16 units including quoting and CRLF. Exceeding the limit fails before any completed CSV reaches stdout; reduce fields or split queries. No CSV import, disk edits or automatic spreadsheet formatting are implemented.
+
+## Plan source inventory changes
+
+```sh
+moon run cmd/main --target wasm -- plan-sources examples/ds000001/manifest.json examples/edit-plan/rename-source.json
+moon run cmd/main --target wasm -- plan-sources examples/ds000001/manifest.json examples/edit-plan/rename-source.json --manifest-only > candidate.json
+moon run cmd/main --target wasm -- check examples/ds000001/manifest.json candidate.json --effective-only
+```
+
+The authored counterfactual renames the real fixture's root source to `bold.json` with the same CC0 metadata. All three scans retain their exact values, while their source histories change. No disk source is renamed: the command only exports an immutable candidate and evidence. The final effective-value check passes; the default all-change gate detects the provenance change.
+
+`SourceChanges::new(additions, removals)` or `from_json(text)` accepts `{"add":[{"path":"bold.json","metadata":{}}],"remove":["task-rest_bold.json"]}`. Both controls are required. Unknown controls, duplicate decoded keys, malformed metadata, unsupported paths and duplicate/case-colliding operations fail. An addition must name a source absent from the baseline; removal must name an existing source. Adding and removing the same path is rejected: use metadata edits for replacement. `index.plan_sources(changes)` validates/rebuilds the final inventory once, with unchanged scan paths, then returns `before()`, `after()`, `impact()` and a complete JSON report. Removed empty/unmatched source data remain in the before snapshot even when scan impact is zero.
+
+At most 256 combined operations and 2,097,152 UTF-16 units of canonical change input; JSON envelope depth67 accommodates metadata64. Existing source/final snapshot limits apply. The CLI rejects change files above 8 MiB on disk. Atomic shrink/grow can succeed without constructing an oversized intermediate snapshot. Empty changes are an identity. Failures return no partial plan; resolution ambiguity retains both snapshots and diagnostics, with CLI exit1. Determinate changes exit0. Source disk application and scan creation/deletion remain unsupported; source creation/removal planning is now implemented separately from existing-source patch planning.
 
 ## Sources and license
 

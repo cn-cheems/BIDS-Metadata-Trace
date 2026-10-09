@@ -4,7 +4,7 @@ extern "wasm" fn exit(code : Int) -> Unit = "wasi_snapshot_preview1" "proc_exit"
 
 ///|
 fn usage() -> String {
-  "Usage: bids-metadata-trace discover DATASET_DIR [--manifest-only] | sources MANIFEST.json | summarize MANIFEST.json FIELD... | table MANIFEST.json FIELD... | plan MANIFEST.json SIDECAR_PATH PATCH.json [--manifest-only] | plan-batch MANIFEST.json BATCH.json [--manifest-only] | bundle BEFORE.json AFTER.json [--effective-only] | replay BUNDLE.json | resolve MANIFEST.json DATA_PATH | audit MANIFEST.json [DATA_PATH ...] | diff BEFORE.json AFTER.json | check BEFORE.json AFTER.json [--effective-only]"
+  "Usage: bids-metadata-trace discover DATASET_DIR [--manifest-only] | sources MANIFEST.json | summarize MANIFEST.json FIELD... | table MANIFEST.json FIELD... | plan MANIFEST.json SIDECAR_PATH PATCH.json [--manifest-only] | plan-batch MANIFEST.json BATCH.json [--manifest-only] | plan-sources MANIFEST.json CHANGES.json [--manifest-only] | bundle BEFORE.json AFTER.json [--effective-only] | replay BUNDLE.json | resolve MANIFEST.json DATA_PATH | audit MANIFEST.json [DATA_PATH ...] | diff BEFORE.json AFTER.json | check BEFORE.json AFTER.json [--effective-only]"
 }
 
 ///|
@@ -46,6 +46,32 @@ async fn load_patch(path : String) -> @trace.MetadataPatch {
       })
     }
     @trace.MetadataPatch::from_json(@fs.read_file(path).text())
+  } catch {
+    @trace.TraceError(diagnostic) => raise @trace.TraceError(diagnostic)
+    error =>
+      raise @trace.TraceError({
+        code: "io_error",
+        path,
+        message: error.to_string(),
+        offset: None,
+        related: [],
+      })
+  }
+}
+
+///|
+async fn load_source_changes(path : String) -> @trace.SourceChanges {
+  try {
+    if @fs.file_size(path) > 8388608L {
+      raise @trace.TraceError({
+        code: "input_limit",
+        path,
+        message: "Source changes exceed 8 MiB on disk; reduce the review scope.",
+        offset: None,
+        related: [],
+      })
+    }
+    @trace.SourceChanges::from_json(@fs.read_file(path).text())
   } catch {
     @trace.TraceError(diagnostic) => raise @trace.TraceError(diagnostic)
     error =>
@@ -102,7 +128,7 @@ async fn main {
     ((args[1] == "summarize" || args[1] == "table") && args.length() >= 4) ||
     (args[1] == "replay" && args.length() == 3) ||
     (
-      args[1] == "plan-batch" &&
+      (args[1] == "plan-batch" || args[1] == "plan-sources") &&
       (
         args.length() == 4 ||
         (args.length() == 5 && args[4] == "--manifest-only")
@@ -177,6 +203,18 @@ async fn main {
       println(
         @trace.ReviewBundle::create(index, load_manifest(args[3]), policy).to_json(),
       )
+    } else if args[1] == "plan-sources" {
+      let plan = index.plan_sources(load_source_changes(args[3]))
+      println(
+        if args.length() == 5 {
+          plan.after().to_manifest_json()
+        } else {
+          plan.to_json()
+        },
+      )
+      if plan.impact().error_count() > 0 {
+        exit(1)
+      }
     } else if args[1] == "plan-batch" {
       let plan = index.plan_edits(load_edit_batch(args[3]))
       println(

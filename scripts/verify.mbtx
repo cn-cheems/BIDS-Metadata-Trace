@@ -398,6 +398,7 @@ async fn main {
   verify_source_coverage(env)
   verify_field_summary(env)
   verify_review_csv(env)
+  verify_source_changes(env)
   println("Verified core targets and real-data Wasm CLI.")
 }
 
@@ -706,4 +707,93 @@ async fn verify_review_csv(env : Map[String, String]) -> Unit {
     duplicate.stderr().contains("duplicate_field_request") else {
     fail("Invalid CSV projection emitted partial stdout")
   }
+}
+
+///|
+async fn verify_source_changes(env : Map[String, String]) -> Unit {
+  let output = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "plan-sources",
+      "examples/ds000001/manifest.json", "examples/edit-plan/rename-source.json",
+    ],
+    env~,
+  ).output()
+  output.check()
+  guard @json.parse(output.stdout())
+    is {
+      "before_manifest": {
+        "sidecars": Array(
+          [{ "path": String("task-balloonanalogrisktask_bold.json"), .. }]
+        ),
+        ..
+      },
+      "after_manifest": {
+        "sidecars": Array(
+          [
+            {
+              "path": String("bold.json"),
+              "metadata": { "RepetitionTime": Number(2.0, ..), .. },
+              ..
+            },
+          ]
+        ),
+        ..
+      },
+      "impact": {
+        "error_count": Number(0.0, ..),
+        "changed_count": Number(3.0, ..),
+        ..
+      },
+      ..
+    } else {
+    fail("Source rename lost real metadata or provenance impact")
+  }
+  let candidate = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "plan-sources",
+      "examples/ds000001/manifest.json", "examples/edit-plan/rename-source.json",
+      "--manifest-only",
+    ],
+    env~,
+  ).output()
+  candidate.check()
+  let root = @fs.tmpdir(prefix="bids-trace-review")
+  errdefer clean_review_directory(root)
+  let path = root + "/renamed.json"
+  @fs.write_file(path, candidate.stdout())
+  let check = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "check", "examples/ds000001/manifest.json",
+      path, "--effective-only",
+    ],
+    env~,
+  ).output()
+  check.check()
+  guard @json.parse(check.stdout()) is { "decision": String("pass"), .. } else {
+    fail("Source rename changed effective values")
+  }
+  let missing = @shell.Cmd(
+    "moon",
+    [
+      "run",
+      "cmd/main",
+      "--target",
+      "wasm",
+      "--deny-warn",
+      "--",
+      "plan-sources",
+      "examples/ds000001/manifest.json",
+      root + "/absent.json",
+    ],
+    env~,
+  ).output()
+  guard missing.exit_code() == 1 &&
+    missing.stdout().is_empty() &&
+    missing.stderr().contains("io_error") else {
+    fail("Source input IO failure emitted partial plan")
+  }
+  clean_review_directory(root)
 }

@@ -177,3 +177,24 @@ test "release policy distinguishes shadowed provenance from effective changes" {
   assert_eq(effective.impact().to_json(), impact.to_json())
 }
 ```
+Source inventory changes compose with the existing release policy.
+
+```mbt check
+///|
+test "plan an added source without changing the baseline" {
+  let path = "sub-01/func/sub-01_task-rest_bold.nii"
+  let before = @trace.DatasetIndex::from_manifest([path], [])
+  let changes = @trace.SourceChanges::new(
+    [
+      @trace.SidecarInput::new(
+        "task-rest_bold.json", "{\"RepetitionTime\":2.0}",
+      ),
+    ],
+    [],
+  )
+  let plan = before.plan_sources(changes)
+  assert_eq(before.resolve(path).to_json(), "{}")
+  assert_eq(plan.after().resolve(path).to_json(), "{\"RepetitionTime\":2.0}")
+  assert_eq(plan.impact().changed_count(), 1)
+}
+```

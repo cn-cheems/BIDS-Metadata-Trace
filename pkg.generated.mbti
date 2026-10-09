@@ -52,6 +52,7 @@ pub fn DatasetIndex::from_json(String) -> Self raise TraceError
 pub fn DatasetIndex::from_manifest(Array[String], Array[SidecarInput]) -> Self raise TraceError
 pub fn DatasetIndex::plan_edit(Self, String, MetadataPatch) -> EditPlan raise TraceError
 pub fn DatasetIndex::plan_edits(Self, EditBatch) -> BatchEditPlan raise TraceError
+pub fn DatasetIndex::plan_sources(Self, SourceChanges) -> SourceChangePlan raise TraceError
 pub fn DatasetIndex::resolve(Self, String) -> ResolvedMetadata raise TraceError
 pub fn DatasetIndex::source_coverage(Self) -> SourceCoverageReport
 pub fn DatasetIndex::to_manifest_json(Self) -> String
@@ -223,6 +224,21 @@ pub struct SidecarInput {
   // private fields
 }
 pub fn SidecarInput::new(String, String) -> Self
+
+pub struct SourceChangePlan {
+  // private fields
+}
+pub fn SourceChangePlan::after(Self) -> DatasetIndex
+pub fn SourceChangePlan::before(Self) -> DatasetIndex
+pub fn SourceChangePlan::impact(Self) -> ImpactReport
+pub fn SourceChangePlan::to_json(Self) -> String
+
+pub struct SourceChanges {
+  // private fields
+}
+pub fn SourceChanges::from_json(String) -> Self raise TraceError
+pub fn SourceChanges::new(Array[SidecarInput], Array[String]) -> Self raise TraceError
+pub fn SourceChanges::to_json(Self) -> String
 
 pub struct SourceCoverageEntry {
   // private fields

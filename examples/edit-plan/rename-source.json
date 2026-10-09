@@ -1,0 +1,10 @@
+{
+  "add": [{
+    "path": "bold.json",
+    "metadata": {
+      "RepetitionTime": 2.0,
+      "TaskName": "balloon analog risk task"
+    }
+  }],
+  "remove": ["task-balloonanalogrisktask_bold.json"]
+}
