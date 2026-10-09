@@ -1,0 +1,8 @@
+{
+  "suffixes": ["bold"],
+  "entities": {
+    "sub": ["01"],
+    "task": ["balloonanalogrisktask"],
+    "run": ["2", "0003"]
+  }
+}

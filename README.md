@@ -40,6 +40,7 @@ Import `cn-cheems/bids_metadata_trace` as `@trace` in your `moon.pkg`. This modu
 - `resolved.to_json()` exports effective metadata; `to_report_json()` includes applied sidecars and field history.
 - `index.to_manifest_json()` exports the complete input snapshot for reproducible reloading.
 - `index.audit(paths)` retains every query occurrence in request order, including duplicates. `audit_all()` uses sorted indexed paths. `report.entries()` returns success or diagnostic per query; `error_count()` and `to_json()` support release checks.
+- `index.select_scans(ScanQuery)` chooses a cohort by supported filename entities. `selection.paths()` returns sorted matches; `selection.audit()` resolves them against the complete original snapshot, preserving ancestor source histories.
 - `index.source_coverage()` accounts for every sidecar within indexed scans: applicability, winning/fully-shadowed scan paths, per-scan winning/shadowed fields and unresolved evidence. Empty sources are retained; `unmatched_paths()` means no indexed target, not permission to delete a source.
 - `before.compare(after)` reports the sorted union of scan paths, with `ImpactKind`, typed `FieldChangeKind`, full before/after evidence, per-field histories and source-chain changes. `changed_count()` excludes indeterminate scans; always also inspect `error_count()`.
 - `impact.release_check(ReleasePolicy)` produces a reusable release decision, sorted affected/unresolved paths and the complete impact evidence. `AllChanges` includes provenance; `EffectiveValues` checks exact values and scan inventory. `Indeterminate` always takes priority over detected changes.
@@ -81,7 +82,7 @@ Tests cover inheritance, source histories, ambiguity, scope errors, numeric pres
 
 ## Roadmap
 
-Implemented: inheritance/provenance, recoverable batch audit, snapshot impact comparison, policy-based release checks, directory discovery with an explicit inventory report, single-source/coordinated multi-source edit planning, atomic source inventory planning, replayable review bundles, source coverage, exact-value cohort summaries, CSV review export and project-specific metadata expectation checks. Next: additional raw-data profiles backed by specification and fixtures. Planned capabilities require separate implementation. Full BIDS validation is not implemented.
+Implemented: inheritance/provenance, recoverable batch audit, snapshot impact comparison, policy-based release checks, directory discovery with an explicit inventory report, single-source/coordinated multi-source edit planning, atomic source inventory planning, replayable review bundles, source coverage, exact-value cohort summaries, CSV review export, project-specific metadata expectation checks and entity-based scan selection. Next: additional raw-data profiles backed by specification and fixtures. Planned capabilities require separate implementation. Full BIDS validation is not implemented.
 
 ## Batch review example
 
@@ -259,6 +260,23 @@ Load `MetadataExpectations::from_json(text)` using exactly `{"required":["Repeti
 `audit.check_expectations(expected)` returns a report with `decision()`, failed field `violation_count()`, unresolved query `error_count()`, deterministic `to_json()` and defensive `to_json_value()`. Every resolved query retains its complete metadata, applied sources and field assignment history, including unselected fields. Checks include presence, actual value, allowed choices, winner and full trace. Failed queries retain diagnostics without speculative checks. Errors take priority over violations. An empty audit is `Indeterminate` with `empty_audit:true` and zero query errors; select at least one scan to obtain a decision. Empty rules impose no field restrictions on a nonempty resolved audit, while still retaining errors.
 
 Limits: 256 distinct fields across both controls, 1–256 choices per allowed field, 2,097,152 UTF-16 units per input/canonical expectation document and 67 JSON containers; CLI file size at most 8 MiB. This is an explicit project rule, not BIDS schema compliance, image/header validation, numeric tolerance, unit conversion, ranges, cross-field predicates or clinical suitability. Complete repeated evidence can expand beyond input size. Source planning, expectation checks and existing comparison/replay remain separate, composable workflows.
+
+## Select and audit a cohort
+
+```sh
+moon run cmd/main --target wasm -- select examples/ds000001/manifest.json examples/selection/later-runs.json
+moon run cmd/main --target wasm -- select examples/ds000001/manifest.json examples/selection/later-runs.json --audit
+```
+
+The authored query selects real ds000001 runs 02 and 03 for participant01 and the balloon-analog-risk task. Run01 remains explicitly listed as excluded. `--audit` embeds both selection evidence and the complete selected audit, including the inherited root `RepetitionTime:2.0`. Source inputs are never filtered by the scan query: parent, local and unselected-source data remain in the original index. This avoids accidentally dropping inheritance when selecting a subset of scans.
+
+`ScanQuery::from_json(text)` accepts exactly `{"suffixes":["bold"],"entities":{"sub":["01"],"run":["2","0003"]}}`; both controls are mandatory. `ScanQuery::new(suffixes, entity_choices)` copies and normalizes typed inputs. Choose one or more of `bold`, `T1w`, `dwi`. Entity keys use filename names (`sub`, `ses`, `task`, `acq`, `ce`, `rec`, `dir`, `run`, `echo`, `part`, `chunk`). Different keys are ANDed, each key's values are ORed, and suffix choices are ORed. A missing filename entity cannot match a constrained key. Decimal indices normalize leading zeroes without machine-integer conversion; all label comparisons are exact, including case and leading zeroes. Unknown keys/controls, empty choice lists, malformed values, duplicate normalized choices and case-colliding labels are errors. Empty `entities:{}` means no entity constraints; empty suffix selection is invalid.
+
+`index.select_scans(query)` returns `ScanSelection` with defensive sorted `paths()`, deterministic `to_json()` inventory accounting, and `audit()`. The report includes normalized query, selected/excluded paths, total and selected counts. It is not an exported manifest or a disk operation. Selection uses filename entities only; chosen scans with resolution errors remain in the audit. The original index is unchanged. `selection.audit()` also composes with existing `summarize_fields`, `to_review_csv` and `check_expectations`; see the executable library example in [USAGE.mbt.md](USAGE.mbt.md).
+
+Default CLI selection exits0 after a valid query, including zero matches. `--audit` exits1 if any chosen scan is unresolved, while retaining the complete report; an empty audit exits0 because auditing alone does not grant approval. It never substitutes `audit_all()` for zero matches. Project expectation checks on an empty selected audit remain `Indeterminate`; inspect `selected_count` or use that gate before approving a cohort. Input/IO errors exit1 with a diagnostic on stderr and no partial stdout.
+
+Limits: at most 256 total suffix/entity choices, 2,097,152 UTF-16 units per parsed/canonical query, three JSON containers, and 8 MiB per CLI query file. Original index limits still apply. Metadata predicates, regular expressions, wildcards, ranges, extension filtering, negative filters and derivative profiles are unsupported. This capability selects indexed supported raw-MRI paths; it does not imply BIDS compliance or complete filesystem capture.
 
 ## Sources and license
 

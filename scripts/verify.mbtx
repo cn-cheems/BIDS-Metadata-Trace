@@ -400,6 +400,7 @@ async fn main {
   verify_review_csv(env)
   verify_source_changes(env)
   verify_expectations(env)
+  verify_scan_selection(env)
   println("Verified core targets and real-data Wasm CLI.")
 }
 
@@ -934,6 +935,166 @@ async fn verify_expectations(env : Map[String, String]) -> Unit {
     fail(
       "Unknown expectation control silently ignored or partial report emitted",
     )
+  }
+  clean_review_directory(root)
+}
+
+///|
+async fn verify_scan_selection(env : Map[String, String]) -> Unit {
+  let query = "examples/selection/later-runs.json"
+  let selection = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "select", "examples/ds000001/manifest.json",
+      query,
+    ],
+    env~,
+  ).output()
+  selection.check()
+  guard @json.parse(selection.stdout())
+    is {
+      "selected_count": Number(2.0, ..),
+      "total_count": Number(3.0, ..),
+      "selected_paths": Array([String(second), String(third)]),
+      "excluded_paths": Array([String(first)]),
+      "query": {
+        "entities": { "run": Array([String("2"), String("3")]), .. },
+        ..
+      },
+      ..
+    } &&
+    second.contains("run-02") &&
+    third.contains("run-03") &&
+    first.contains("run-01") else {
+    fail(
+      "Real cohort selection did not normalize decimal choices or account for every scan",
+    )
+  }
+  let audit = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "select", "examples/ds000001/manifest.json",
+      query, "--audit",
+    ],
+    env~,
+  ).output()
+  audit.check()
+  guard @json.parse(audit.stdout())
+    is {
+      "audit": {
+        "error_count": Number(0.0, ..),
+        "entries": Array(
+          [
+            {
+              "result": {
+                "metadata": { "RepetitionTime": Number(2.0, ..), .. },
+                "applied_sidecars": Array(
+                  [String("task-balloonanalogrisktask_bold.json")]
+                ),
+                ..
+              },
+              ..
+            },
+            {
+              "result": {
+                "metadata": { "RepetitionTime": Number(2.0, ..), .. },
+                ..
+              },
+              ..
+            },
+          ]
+        ),
+        ..
+      },
+      "selection": { "selected_count": Number(2.0, ..), .. },
+      ..
+    } &&
+    audit.stdout().contains("\"RepetitionTime\":2.0") else {
+    fail("Selected audit lost parent inheritance or exact metadata tokens")
+  }
+  let root = @fs.tmpdir(prefix="bids-trace-review")
+  errdefer clean_review_directory(root)
+  let broad = root + "/broad.json"
+  @fs.write_file(broad, "{\"suffixes\":[\"bold\"],\"entities\":{}}")
+  let ambiguous = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "select", "examples/release-check/ambiguous-manifest.json",
+      broad, "--audit",
+    ],
+    env~,
+  ).output()
+  guard ambiguous.exit_code() == 1 &&
+    @json.parse(ambiguous.stdout())
+    is {
+      "selection": { "selected_count": Number(1.0, ..), .. },
+      "audit": { "error_count": Number(1.0, ..), .. },
+      ..
+    } &&
+    ambiguous.stdout().contains("ambiguous_inheritance") else {
+    fail("Selection silently filtered an ambiguous chosen scan")
+  }
+  let empty_query = root + "/empty.json"
+  @fs.write_file(
+    empty_query, "{\"suffixes\":[\"bold\"],\"entities\":{\"task\":[\"other\"]}}",
+  )
+  let empty = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "select", "examples/ds000001/manifest.json",
+      empty_query, "--audit",
+    ],
+    env~,
+  ).output()
+  empty.check()
+  guard @json.parse(empty.stdout())
+    is {
+      "selection": {
+        "selected_count": Number(0.0, ..),
+        "total_count": Number(3.0, ..),
+        ..
+      },
+      "audit": { "entries": Array([]), .. },
+      ..
+    } else {
+    fail("Empty selection fell back to the full dataset")
+  }
+  let invalid_query = root + "/invalid.json"
+  @fs.write_file(
+    invalid_query, "{\"suffixes\":[\"bold\"],\"entities\":{\"run\":[\"1\",\"01\"]}}",
+  )
+  let invalid = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "select", "examples/ds000001/manifest.json",
+      invalid_query,
+    ],
+    env~,
+  ).output()
+  guard invalid.exit_code() == 1 &&
+    invalid.stdout().is_empty() &&
+    invalid.stderr().contains("duplicate_query_choice") else {
+    fail("Normalized duplicate query choices were silently accepted")
+  }
+  let missing = @shell.Cmd(
+    "moon",
+    [
+      "run",
+      "cmd/main",
+      "--target",
+      "wasm",
+      "--deny-warn",
+      "--",
+      "select",
+      "examples/ds000001/manifest.json",
+      root + "/absent.json",
+    ],
+    env~,
+  ).output()
+  guard missing.exit_code() == 1 &&
+    missing.stdout().is_empty() &&
+    missing.stderr().contains("io_error") else {
+    fail("Query IO error produced a partial selection")
   }
   clean_review_directory(root)
 }

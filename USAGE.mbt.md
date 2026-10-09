@@ -215,3 +215,25 @@ test "required acquisition metadata is checked after inheritance" {
   assert_eq(report.violation_count(), 0)
 }
 ```
+Select a cohort without losing inherited source evidence, then run project checks.
+
+```mbt check
+///|
+test "entity selection composes with acquisition checks" {
+  let first = "sub-01/func/sub-01_task-rest_run-01_bold.nii"
+  let second = "sub-01/func/sub-01_task-rest_run-02_bold.nii"
+  let index = @trace.DatasetIndex::from_manifest([first, second], [
+    @trace.SidecarInput::new("task-rest_bold.json", "{\"RepetitionTime\":2.0}"),
+  ])
+  let query = @trace.ScanQuery::new(["bold"], { "sub": ["01"], "run": ["02"] })
+  let selection = index.select_scans(query)
+  assert_eq(selection.paths(), [second])
+  let expected = @trace.MetadataExpectations::from_json(
+    "{\"required\":[\"RepetitionTime\"],\"allowed\":{\"RepetitionTime\":[2.0]}}",
+  )
+  assert_true(
+    selection.audit().check_expectations(expected).decision() ==
+    @trace.ExpectationDecision::Pass,
+  )
+}
+```
