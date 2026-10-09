@@ -36,6 +36,9 @@ Offline review bundles close the handoff between a curator and reviewer. Version
 - `scripts/verify.mbtx` orchestrates validation using MoonBit, not shell parsing or generated Python/JavaScript scripts.
 
 Core targets are Wasm, Wasm-GC, JS and Native. The CLI uses Moonrun host IO on Wasm because current async Windows native IO requires MSVC; MinGW is not supported by that dependency. CI runs core tests and a checked Wasm CLI example on Linux, macOS and Windows; local evidence and remote results must be reported separately.
-# Field cohort review
+
+## Field cohort review
 
 An audit can project explicitly requested fields into exact canonical JSON groups. Every observation retains query index, scan path, winner and assignment history; unresolved queries are global errors, never absent values. This consumes the existing resolver rather than introducing competing inheritance semantics. The report exposes a defensive JSON tree and deterministic serialization, with no value coercion or BIDS schema verdict.
+
+CSV review is an explicit field projection over the recoverable audit, not a serialization of the full index. All dynamic content uses tagged exact JSON inside fully quoted RFC 4180 cells. Unresolved presence is unknown, not false. Record expansion is capped before returning a complete result; no row is silently omitted. Existing resolver behavior remains shared.

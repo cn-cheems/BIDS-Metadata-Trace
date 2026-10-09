@@ -29,6 +29,7 @@ pub fn AuditReport::entries(Self) -> Array[AuditEntry]
 pub fn AuditReport::error_count(Self) -> Int
 pub fn AuditReport::summarize_fields(Self, Array[String]) -> FieldSummaryReport raise TraceError
 pub fn AuditReport::to_json(Self) -> String
+pub fn AuditReport::to_review_csv(Self, Array[String]) -> String raise TraceError
 
 pub struct BatchEditPlan {
   // private fields

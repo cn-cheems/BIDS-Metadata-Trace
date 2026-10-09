@@ -81,7 +81,7 @@ Tests cover inheritance, source histories, ambiguity, scope errors, numeric pres
 
 ## Roadmap
 
-Implemented: inheritance/provenance, recoverable batch audit, snapshot impact comparison, policy-based release checks, directory discovery with an explicit inventory report, single-source/coordinated multi-source edit planning and replayable review bundles. Next: additional raw-data profiles backed by specification and fixtures. Planned capabilities require separate implementation. Full BIDS validation is not implemented.
+Implemented: inheritance/provenance, recoverable batch audit, snapshot impact comparison, policy-based release checks, directory discovery with an explicit inventory report, single-source/coordinated multi-source edit planning, replayable review bundles, source coverage, exact-value cohort summaries and CSV review export. Next: additional raw-data profiles backed by specification and fixtures. Planned capabilities require separate implementation. Full BIDS validation is not implemented.
 
 ## Batch review example
 
@@ -218,6 +218,18 @@ moon run cmd/main --target wasm -- summarize examples/ds000001/provenance-manife
 ```
 
 `AuditReport::summarize_fields(fields)` groups exact canonical whole JSON values, retains every request occurrence with its query index, winning source and complete assignment trace, and lists resolved-but-absent fields separately from failed queries. Null is a value; `2` and `2.0` are separate groups. Objects/arrays and unknown metadata are supported without numerical conversion. Field order follows the explicit request; groups are ordered by canonical token, not numeric magnitude. At most 256 distinct fields may be requested; duplicate/oversized requests fail. An empty library projection is valid. The CLI requires at least one field and exits 1 when the completed report contains resolution errors, otherwise 0. This reviews consistency; it does not validate BIDS field units or establish scientific equivalence. Existing resolution and input limits apply. JSON evidence can be consumed through the report's defensive `to_json_value()` accessor.
+
+## Export a review table
+
+```sh
+moon run cmd/main --target wasm -- table examples/ds000001/provenance-manifest.json RepetitionTime TaskName MissingField > review.csv
+```
+
+`AuditReport::to_review_csv(fields)` exports every query occurrence in request order, including errors. Four fixed columns (`query_index`, `data_path`, `status`, `diagnostic`) precede four columns per explicit field: `present`, `value`, `winning_source`, `trace`; their headers include the JSON-encoded field name. All cells are quoted, quotes doubled, records end with CRLF, and CLI output is UTF-8 without a BOM. This is a review CSV, not a BIDS TSV or a complete snapshot replacement; only requested fields are projected.
+
+Dynamic path/value/source/trace/diagnostic cells start with `json:` followed by exact canonical JSON. After CSV decoding, remove exactly that prefix and parse the remainder as JSON (use a token-preserving parser for exact numbers). This preserves `2.0`, `-0`, large integers, unknown nested data, commas, quotes and escaped newlines; formula-like strings remain JSON strings behind a text prefix. It does not claim all spreadsheet applications preserve text automatically. Presence `true` with `json:null` means explicit null; `false` with empty value/source/trace means absent from a resolved scan. An error row has its complete diagnostic and empty presence/value/source/trace cells, meaning unknown rather than absent. Full assignment traces retain shadowed values.
+
+The CLI requires one or more distinct fields, audits all indexed scans, and exits 1 if any exported row is unresolved; library callers can select scans through `audit(paths)`. Empty library field selection exports the four base columns. Projection limits match cohort summaries (256 unique fields); complete CSV output is limited to 16,777,216 UTF-16 units including quoting and CRLF. Exceeding the limit fails before any completed CSV reaches stdout; reduce fields or split queries. No CSV import, disk edits or automatic spreadsheet formatting are implemented.
 
 ## Sources and license
 

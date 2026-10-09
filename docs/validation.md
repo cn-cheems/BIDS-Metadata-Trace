@@ -1,5 +1,9 @@
 # Validation evidence
 
+CSV review validation on 2026-10-09 passed 113 Wasm tests and 107 each on Wasm-GC, JS and actual Native execution. An independent quoted-record test reader checks cell recovery, Unicode/quotes/commas, formula-like strings, exact large integers/negative zero/decimal tokens, unknown nested values, snapshot round trips, duplicate request order, missing/null/unresolved distinctions and complete shadowed history. Tests cover empty and 256/257-field projections, expanded evidence exceeding the 16 Mi-unit output limit and successful retry. Formatting, interface generation and strict compilation passed. Real-path Wasm CLI CSV export checks every scan, exact repetition time and missingness, retains an ambiguous row with exit1, and rejects duplicate fields with no partial stdout.
+
+Field-summary commit `a657302` passed [CI 37901906815](https://github.com/cn-cheems/BIDS-Metadata-Trace/actions/runs/37901906815) on Linux, macOS and Windows. CSV revision remote execution must be verified after push.
+
 Source-coverage commit `c18cd22` passed [CI 37901514542](https://github.com/cn-cheems/BIDS-Metadata-Trace/actions/runs/37901514542) on Linux, macOS and Windows.
 
 Field-cohort summary validation on 2026-10-09 passed 109 Wasm tests and 103 each on Wasm-GC, JS and actual Native execution. Exact decimal/large integer/negative-zero tokens, nested unknown values, missing/null/unresolved distinctions, duplicate requests, full provenance, snapshot round trips, defensive trees, 256/257 field limits and recovery were checked. Formatting, interface generation, strict all-target compilation and real-data/ambiguous-cohort CLI workflows passed.

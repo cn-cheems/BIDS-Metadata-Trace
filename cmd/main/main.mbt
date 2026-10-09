@@ -4,7 +4,7 @@ extern "wasm" fn exit(code : Int) -> Unit = "wasi_snapshot_preview1" "proc_exit"
 
 ///|
 fn usage() -> String {
-  "Usage: bids-metadata-trace discover DATASET_DIR [--manifest-only] | sources MANIFEST.json | summarize MANIFEST.json FIELD... | plan MANIFEST.json SIDECAR_PATH PATCH.json [--manifest-only] | plan-batch MANIFEST.json BATCH.json [--manifest-only] | bundle BEFORE.json AFTER.json [--effective-only] | replay BUNDLE.json | resolve MANIFEST.json DATA_PATH | audit MANIFEST.json [DATA_PATH ...] | diff BEFORE.json AFTER.json | check BEFORE.json AFTER.json [--effective-only]"
+  "Usage: bids-metadata-trace discover DATASET_DIR [--manifest-only] | sources MANIFEST.json | summarize MANIFEST.json FIELD... | table MANIFEST.json FIELD... | plan MANIFEST.json SIDECAR_PATH PATCH.json [--manifest-only] | plan-batch MANIFEST.json BATCH.json [--manifest-only] | bundle BEFORE.json AFTER.json [--effective-only] | replay BUNDLE.json | resolve MANIFEST.json DATA_PATH | audit MANIFEST.json [DATA_PATH ...] | diff BEFORE.json AFTER.json | check BEFORE.json AFTER.json [--effective-only]"
 }
 
 ///|
@@ -91,7 +91,7 @@ async fn main {
   if args.length() == 2 && (args[1] == "--help" || args[1] == "-h") {
     println(
       usage() +
-      "\nOutputs JSON. Exit: 0 success/pass, 1 failure. check defaults to all changes; --effective-only ignores provenance-only edits but retains their evidence. bundle/replay exit 0 for successful capture/verified reproduction, regardless of release decision; use check for a release gate. JSON decision distinguishes changes_detected from indeterminate. Input/IO errors produce a diagnostic on stderr instead of a completed report.",
+      "\nOutputs JSON; table outputs quoted CSV with tagged JSON cells. Exit: 0 success/pass, 1 failure. check defaults to all changes; --effective-only ignores provenance-only edits but retains their evidence. bundle/replay exit 0 for successful capture/verified reproduction, regardless of release decision; use check for a release gate. JSON decision distinguishes changes_detected from indeterminate. Input/IO errors produce a diagnostic on stderr instead of a completed report.",
     )
     return
   }
@@ -99,7 +99,7 @@ async fn main {
     !(((args[1] == "resolve" || args[1] == "diff") && args.length() == 4) ||
     args[1] == "audit" ||
     (args[1] == "sources" && args.length() == 3) ||
-    (args[1] == "summarize" && args.length() >= 4) ||
+    ((args[1] == "summarize" || args[1] == "table") && args.length() >= 4) ||
     (args[1] == "replay" && args.length() == 3) ||
     (
       args[1] == "plan-batch" &&
@@ -150,7 +150,13 @@ async fn main {
       return
     }
     let index = load_manifest(args[2])
-    if args[1] == "summarize" {
+    if args[1] == "table" {
+      let audit = index.audit_all()
+      @stdio.stdout.write(audit.to_review_csv(args[3:].to_owned()))
+      if audit.error_count() > 0 {
+        exit(1)
+      }
+    } else if args[1] == "summarize" {
       let report = index.audit_all().summarize_fields(args[3:].to_owned())
       println(report.to_json())
       if report.error_count() > 0 {

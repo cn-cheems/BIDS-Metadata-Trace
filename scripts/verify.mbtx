@@ -397,6 +397,7 @@ async fn main {
   verify_batch_workflow(env)
   verify_source_coverage(env)
   verify_field_summary(env)
+  verify_review_csv(env)
   println("Verified core targets and real-data Wasm CLI.")
 }
 
@@ -655,5 +656,54 @@ async fn verify_field_summary(env : Map[String, String]) -> Unit {
       ..
     } else {
     fail("Unresolved cohort became missing metadata")
+  }
+}
+
+///|
+async fn verify_review_csv(env : Map[String, String]) -> Unit {
+  let output = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "table", "examples/ds000001/provenance-manifest.json",
+      "RepetitionTime", "MissingField",
+    ],
+    env~,
+  ).output()
+  output.check()
+  let csv = output.stdout()
+  guard csv.has_prefix(
+      "\"query_index\",\"data_path\",\"status\",\"diagnostic\",",
+    ) &&
+    csv.split("\r\n").length() == 5 &&
+    csv.contains("\"true\",\"json:2.0\"") &&
+    csv.contains("\"false\",\"\",\"\",\"\"\r\n") &&
+    csv.contains("sub-01_task-balloonanalogrisktask_run-03_bold.nii.gz") else {
+    fail("CSV lost real scan rows exact values or missingness")
+  }
+  let bad = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "table", "examples/release-check/ambiguous-manifest.json",
+      "RepetitionTime",
+    ],
+    env~,
+  ).output()
+  guard bad.exit_code() == 1 &&
+    bad.stdout().contains("\"error\",\"json:{") &&
+    bad.stdout().contains("ambiguous_inheritance") else {
+    fail("CSV lost unresolved row or exit status")
+  }
+  let duplicate = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "table", "examples/ds000001/manifest.json",
+      "x", "x",
+    ],
+    env~,
+  ).output()
+  guard duplicate.exit_code() == 1 &&
+    duplicate.stdout().is_empty() &&
+    duplicate.stderr().contains("duplicate_field_request") else {
+    fail("Invalid CSV projection emitted partial stdout")
   }
 }
