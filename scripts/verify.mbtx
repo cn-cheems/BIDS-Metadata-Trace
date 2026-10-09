@@ -82,5 +82,15 @@ async fn main {
     fail("Unsupported release policy option must fail explicitly.")
   }
   @shell.Cmd("git", ["diff", "--check"]).run()
+  let discovery = @shell.Cmd("moon", ["run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "discover", "examples/ds000001/tree"], env~).output()
+  discovery.check()
+  guard @json.parse(discovery.stdout()) is {
+    "status": String("complete_supported_inventory"),
+    "manifest": {"files": Array(found), "sidecars": Array([{"metadata": {"RepetitionTime": Number(2.0, ..), ..}, ..}]), ..},
+    "auxiliary_paths": Array([String("README")]), "excluded_paths": Array([]), ..
+  } && found.length() == 3 else { fail("Discovery must retain all three real fixture paths and metadata.") }
+  let exported = @shell.Cmd("moon", ["run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "discover", "examples/ds000001/tree", "--manifest-only"], env~).output()
+  exported.check()
+  guard @json.parse(exported.stdout()) is {"files": Array(exported_paths), "sidecars": Array([_]), ..} && exported_paths.length() == 3 && exported.stdout().contains("2.0") else { fail("The discovered manifest must preserve numeric tokens.") }
   println("Verified core targets and real-data Wasm CLI.")
 }

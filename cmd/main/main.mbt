@@ -4,7 +4,7 @@ extern "wasm" fn exit(code : Int) -> Unit = "wasi_snapshot_preview1" "proc_exit"
 
 ///|
 fn usage() -> String {
-  "Usage: bids-metadata-trace resolve MANIFEST.json DATA_PATH | audit MANIFEST.json [DATA_PATH ...] | diff BEFORE.json AFTER.json | check BEFORE.json AFTER.json [--effective-only]"
+  "Usage: bids-metadata-trace discover DATASET_DIR [--manifest-only] | resolve MANIFEST.json DATA_PATH | audit MANIFEST.json [DATA_PATH ...] | diff BEFORE.json AFTER.json | check BEFORE.json AFTER.json [--effective-only]"
 }
 
 ///|
@@ -47,6 +47,13 @@ async fn main {
     !(((args[1] == "resolve" || args[1] == "diff") && args.length() == 4) ||
     args[1] == "audit" ||
     (
+      args[1] == "discover" &&
+      (
+        args.length() == 3 ||
+        (args.length() == 4 && args[3] == "--manifest-only")
+      )
+    ) ||
+    (
       args[1] == "check" &&
       (
         args.length() == 4 ||
@@ -58,6 +65,17 @@ async fn main {
     return
   }
   try {
+    if args[1] == "discover" {
+      let report = discover(args[2])
+      println(
+        if args.length() == 4 {
+          report.index().to_manifest_json()
+        } else {
+          report.to_json()
+        },
+      )
+      return
+    }
     let index = load_manifest(args[2])
     if args[1] == "check" {
       let policy = if args.length() == 5 {

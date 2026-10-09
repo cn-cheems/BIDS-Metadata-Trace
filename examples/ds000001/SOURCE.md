@@ -21,3 +21,5 @@ CC0 terms: https://creativecommons.org/publicdomain/zero/1.0/
 `provenance-manifest.json` is another CC0 counterfactual: it adds a run 01 local sidecar assigning the same `RepetitionTime: 2.0`. It demonstrates a source/history edit without changing the effective value. The added sidecar is synthetic, not a file observed in OpenNeuro.
 
 No imaging bytes are redistributed. The manifest is an explicit subset containing subject 01's three BOLD paths and the root BOLD sidecar; it is not a complete dataset inventory or a BIDS compliance certificate. The original dataset declares BIDS 1.0.0; this example exercises inheritance rules, not migration or validation against the entire 1.11.2 schema.
+
+`tree/` materializes the same CC0 JSON and path subset for filesystem discovery. Files bearing `.nii.gz` names contain explicitly marked text placeholders authored under Apache-2.0, not NIfTI data. Its README explains the distinction. No imaging content is needed or inspected by discovery.

@@ -6,6 +6,7 @@ import {
 }
 
 // Values
+pub fn classify_discovery_entry(String, directory~ : Bool) -> DiscoveryRole raise TraceError
 
 // Errors
 pub(all) suberror TraceError {
@@ -52,6 +53,25 @@ pub fn Diagnostic::not_equal(Self, Self) -> Bool
 pub fn Diagnostic::to_json(Self) -> Json
 pub fn Diagnostic::to_report_json(Self) -> String
 pub fn Diagnostic::to_repr(Self) -> @debug.Repr
+
+pub struct DiscoveryReport {
+  // private fields
+}
+pub fn DiscoveryReport::auxiliary_paths(Self) -> Array[String]
+pub fn DiscoveryReport::excluded_paths(Self) -> Array[String]
+pub fn DiscoveryReport::from_inventory(Array[String], Array[SidecarInput]) -> Self raise TraceError
+pub fn DiscoveryReport::index(Self) -> DatasetIndex
+pub fn DiscoveryReport::to_json(Self) -> String
+
+pub(all) enum DiscoveryRole {
+  Directory
+  Data
+  Sidecar
+  Auxiliary
+  Excluded
+} derive(Eq)
+pub fn DiscoveryRole::equal(Self, Self) -> Bool
+pub fn DiscoveryRole::not_equal(Self, Self) -> Bool
 
 pub struct FieldChange {
   // private fields

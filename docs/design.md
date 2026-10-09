@@ -14,6 +14,8 @@ Recoverable query auditing is implemented: every requested occurrence retains a 
 
 Release checks complete the release-review workflow: a curator selects whether to block effective-value/inventory changes or all provenance changes; CI receives a process failure and downstream library users receive a typed decision. Errors always take priority, while determinate changes and policy-ignored evidence remain available. Decisions do not certify source completeness or BIDS conformance.
 
+Directory discovery completes the input workflow. An inventory classifier records explicit auxiliary/excluded resources and requires every MRI sidecar's text; the CLI supplies a bounded filesystem walk. Unsupported candidates and incomplete inventories reject the full operation. Image content is unused. Quiescent regular directories are supported; symlinks/junctions are refused and discovery is not an atomic capture.
+
 ## Safety of interpretation
 
 The raw MRI profile is versioned by documented scope rather than a claim of complete BIDS conformance. Unknown metadata values are preserved; unsupported selectors and unknown manifest controls fail. No input source is rewritten. Same-level ambiguity is a resolution error, so an index can still be used for unaffected scans. JSON syntax and Unicode validation use MoonBit core; duplicate decoded keys and number lexeme preservation are handled by a bounded additional source walk.

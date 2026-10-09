@@ -15,7 +15,7 @@ moon run cmd/main --target wasm -- resolve examples/ds000001/manifest.json sub-0
 
 The included manifest contains real paths and metadata from OpenNeuro ds000001 (CC0). No image downloads or private infrastructure are needed. The report contains `RepetitionTime: 2.0`, with `task-balloonanalogrisktask_bold.json` as its source. See [source and license details](examples/ds000001/SOURCE.md).
 
-To use your own dataset, supply **all potentially applicable JSON sidecars** within the supported scope and the data paths you want to query. The CLI accepts any manifest in the format below; it never substitutes demo data. A manifest is a caller-supplied snapshot: omitted sidecars cannot be discovered or reported by this tool.
+To use your own dataset, discover a supported directory as described below, or supply **all potentially applicable JSON sidecars** within the supported scope and the data paths you want to query. Explicit manifests are caller-supplied snapshots: omitted sidecars cannot be inferred by their query APIs.
 
 ```json
 {
@@ -76,7 +76,7 @@ Tests cover inheritance, source histories, ambiguity, scope errors, numeric pres
 
 ## Roadmap
 
-Implemented: inheritance/provenance, recoverable batch audit, snapshot impact comparison and policy-based release checks. Next: explicit manifest discovery with a completeness report, then additional raw-data profiles backed by specification and fixtures. These require separate implementation and are not available now. Full BIDS validation is not implemented.
+Implemented: inheritance/provenance, recoverable batch audit, snapshot impact comparison, policy-based release checks and directory discovery with an explicit inventory report. Next: metadata edit planning and replayable review bundles, then additional raw-data profiles backed by specification and fixtures. Planned capabilities require separate implementation. Full BIDS validation is not implemented.
 
 ## Batch review example
 
@@ -128,6 +128,20 @@ moon run cmd/main --target wasm -- check examples/release-check/ambiguous-manife
 The first exits 1 with `decision: "changes_detected"` and three affected paths. The second exits 0 with `decision: "pass"`, while retaining run 01's synthetic provenance edit. Without `--effective-only` that edit fails. The third exits 1 with `decision: "indeterminate"`, unresolved paths and diagnostics from both sides; it cannot pass by comparing the same invalid snapshot to itself.
 
 The CLI uses **0 for success/pass, 1 for failure**. Current Moonrun normalizes nonzero WASI exit codes to 1, so scripts must use JSON `decision` to distinguish changes from indeterminate comparisons. Completed checks write reports to stdout; malformed input or IO failure writes a diagnostic to stderr and produces no completed report. Usage errors write usage to stderr. A `Pass` applies only to the selected policy and supplied snapshots; omitted sources remain the caller's responsibility and it does not certify BIDS compliance. Value checks retain the exact numeric-token semantics described above.
+
+## Discover a directory
+
+```sh
+moon run cmd/main --target wasm -- discover examples/ds000001/tree
+moon run cmd/main --target wasm -- discover /path/to/dataset --manifest-only > snapshot.json
+moon run cmd/main --target wasm -- audit snapshot.json
+```
+
+Default output includes a reusable `manifest`, `auxiliary_paths` and `excluded_paths`. `--manifest-only` explicitly selects just the query input; inspect the default report when reviewing completeness. `DiscoveryReport::from_inventory(paths, sidecar_texts)` exposes the same validated workflow for archive or virtual-filesystem adapters. `classify_discovery_entry(path, directory=...)` tells adapters which files need source text. Every expected sidecar must have exactly one text input; missing/extra sources and collisions fail.
+
+Discovery reads regular JSON sidecars and records `.nii`/`.nii.gz` paths without opening image bytes. It walks regular directories, includes hidden entries in its inventory and refuses symlinks/junctions and special files. It prunes and reports hidden paths and the top-level `derivatives`, `sourcedata`, `code`, `stimuli` trees. It records auxiliary TSV/TSV.GZ/BVAL/BVEC files, events/scans/sessions/participants JSON, and the documented root README/LICENSE/CHANGES and dataset_description/participants resources. Their contents do not contribute MRI metadata and are not exported in the manifest. Other files, unsupported MRI suffixes/entities, malformed JSON and read failures reject the entire discovery. `.bidsignore` is reported as a hidden exclusion and is **not interpreted**.
+
+Limits: 20,000 visited entries, 32 directory levels, the existing snapshot/JSON limits, and 8 MiB on disk per sidecar. Run against a quiescent directory: discovery is not an atomic filesystem transaction. `complete_supported_inventory` covers the selected raw-MRI profile and recorded exclusions, not the entire BIDS ecosystem. The included tree uses real CC0 metadata and path names; image entries are explicit text placeholders for a metadata-only demonstration. It does not claim image validity.
 
 ## Sources and license
 

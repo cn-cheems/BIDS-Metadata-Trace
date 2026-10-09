@@ -68,18 +68,21 @@ pub fn DatasetIndex::from_json(text : String) -> DatasetIndex raise TraceError {
 
 ///|
 /// A complete deterministic v1 manifest snapshot. Unknown metadata is retained.
+fn DatasetIndex::manifest_value(self : DatasetIndex) -> Json {
+  Json::object({
+    "files": Json::array(self.data_paths().map(Json::string)),
+    "sidecars": Json::array(
+      self.sidecars.map(sidecar => {
+        Json::object({
+          "path": Json::string(sidecar.selector.path),
+          "metadata": Json::object(sidecar.metadata),
+        })
+      }),
+    ),
+  })
+}
+
+///|
 pub fn DatasetIndex::to_manifest_json(self : DatasetIndex) -> String {
-  canonical_json(
-    Json::object({
-      "files": Json::array(self.data_paths().map(Json::string)),
-      "sidecars": Json::array(
-        self.sidecars.map(sidecar => {
-          Json::object({
-            "path": Json::string(sidecar.selector.path),
-            "metadata": Json::object(sidecar.metadata),
-          })
-        }),
-      ),
-    }),
-  )
+  canonical_json(self.manifest_value())
 }

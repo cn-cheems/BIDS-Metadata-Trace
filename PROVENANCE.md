@@ -19,6 +19,8 @@ OpenNeuro ds000001 metadata and path subset are CC0; exact version and source ar
 
 The release-check ambiguity example is an authored Apache-2.0 fixture. The effective-value and provenance policy rules are project behavior, not additional BIDS conformance rules. The two CC0 counterfactual manifests are explicitly marked in their source record.
 
+The filesystem fixture materializes the same CC0 metadata/path subset. Image-named entries are marked text placeholders (Apache-2.0) and are not represented as images. Discovery classification/exclusion rules are the project's bounded profile, not the full BIDS inventory specification.
+
 ## Related work checked on 2026-10-08
 
 - [MoonNIfTI](https://github.com/wangjiale6036-dotcom/moonnifti), MIT: voxel access and coordinate-preserving transformations.

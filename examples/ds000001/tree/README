@@ -1,0 +1,3 @@
+Metadata-only filesystem fixture. Sidecar values and three scan paths are from
+the CC0 OpenNeuro snapshot recorded in ../SOURCE.md. Files named *.nii.gz are
+explicit text placeholders, not NIfTI images. Discovery reads their names only.
