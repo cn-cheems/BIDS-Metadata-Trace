@@ -41,3 +41,4 @@ The following projects were checked on 2026-10-08:
 - [bidser](https://cran.r-project.org/web/packages/bidser/news/news.html): mature R BIDS workflow; recent releases explicitly address inherited metadata and provenance.
 
 Our public boundary is a caller-supplied dataset snapshot -> scan path -> effective JSON plus field assignment history. It complements imaging readers and is not claimed to be globally novel. Registry keywords checked: bids, neuroimaging, nifti, sidecar, metadata, inheritance. GitHub queries included BIDS language:MoonBit and bids moonbit in:readme. This bounded search does not cover private or unindexed projects and cannot establish ecosystem uniqueness.
+Field-summary implementation and its authored tests are Apache-2.0 project code. The cohort review follows existing exact-token semantics; no PyBIDS implementation or tests were copied.

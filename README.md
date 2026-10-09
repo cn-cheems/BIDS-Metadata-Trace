@@ -211,6 +211,14 @@ The real-path fixture's synthetic run-01 source wins `RepetitionTime` for that s
 
 This is a projection over the supplied snapshot's indexed scans. Unmatched sources may serve unindexed data; coverage neither inspects other files nor recommends automatic deletion. Empty applicable sources affect the applied chain even though they assign no fields. Correcting input and rerunning starts a fresh report. The library and command use the existing supported raw-MRI boundary.
 
+## Summarize a scan cohort
+
+```sh
+moon run cmd/main --target wasm -- summarize examples/ds000001/provenance-manifest.json RepetitionTime TaskName MissingField
+```
+
+`AuditReport::summarize_fields(fields)` groups exact canonical whole JSON values, retains every request occurrence with its query index, winning source and complete assignment trace, and lists resolved-but-absent fields separately from failed queries. Null is a value; `2` and `2.0` are separate groups. Objects/arrays and unknown metadata are supported without numerical conversion. Field order follows the explicit request; groups are ordered by canonical token, not numeric magnitude. At most 256 distinct fields may be requested; duplicate/oversized requests fail. An empty library projection is valid. The CLI requires at least one field and exits 1 when the completed report contains resolution errors, otherwise 0. This reviews consistency; it does not validate BIDS field units or establish scientific equivalence. Existing resolution and input limits apply. JSON evidence can be consumed through the report's defensive `to_json_value()` accessor.
+
 ## Sources and license
 
 Project implementation and authored tests: Apache-2.0, copyright 2026 cn-cheems. External data retain their own license. [PROVENANCE.md](PROVENANCE.md) records specification, dependency, fixture and ecosystem sources. This project does not claim ecosystem uniqueness, clinical suitability or a performance advantage.

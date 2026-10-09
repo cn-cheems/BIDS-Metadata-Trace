@@ -1,5 +1,9 @@
 # Validation evidence
 
+Source-coverage commit `c18cd22` passed [CI 37901514542](https://github.com/cn-cheems/BIDS-Metadata-Trace/actions/runs/37901514542) on Linux, macOS and Windows.
+
+Field-cohort summary validation on 2026-10-09 passed 109 Wasm tests and 103 each on Wasm-GC, JS and actual Native execution. Exact decimal/large integer/negative-zero tokens, nested unknown values, missing/null/unresolved distinctions, duplicate requests, full provenance, snapshot round trips, defensive trees, 256/257 field limits and recovery were checked. Formatting, interface generation, strict all-target compilation and real-data/ambiguous-cohort CLI workflows passed.
+
 Source coverage validation on 2026-10-09 passed 105 Wasm tests and 99 each on Wasm-GC, JS and Native, including actual native execution. Tests cover partial/full shadowing, empty/unmatched sources, ambiguity, deterministic round trips, defensive copies and recovery. Formatting, generated interfaces, strict compilation and real-data CLI coverage checks passed. Baseline batch-planning commit `753e226` passed [CI 37887317168](https://github.com/cn-cheems/BIDS-Metadata-Trace/actions/runs/37887317168) on all three operating systems.
 
 Local host: Windows x86_64, 2026-10-08. Toolchain: moon 0.1.20260920; moonc v0.10.14+7d59c7ec9.

@@ -27,6 +27,7 @@ pub struct AuditReport {
 }
 pub fn AuditReport::entries(Self) -> Array[AuditEntry]
 pub fn AuditReport::error_count(Self) -> Int
+pub fn AuditReport::summarize_fields(Self, Array[String]) -> FieldSummaryReport raise TraceError
 pub fn AuditReport::to_json(Self) -> String
 
 pub struct BatchEditPlan {
@@ -128,6 +129,13 @@ pub struct FieldOrigin {
 }
 pub fn FieldOrigin::path(Self) -> String
 pub fn FieldOrigin::value(Self) -> Json
+
+pub struct FieldSummaryReport {
+  // private fields
+}
+pub fn FieldSummaryReport::error_count(Self) -> Int
+pub fn FieldSummaryReport::to_json(Self) -> String
+pub fn FieldSummaryReport::to_json_value(Self) -> Json
 
 pub struct ImpactEntry {
   // private fields

@@ -396,6 +396,7 @@ async fn main {
   clean_review_directory(review_dir)
   verify_batch_workflow(env)
   verify_source_coverage(env)
+  verify_field_summary(env)
   println("Verified core targets and real-data Wasm CLI.")
 }
 
@@ -608,5 +609,51 @@ async fn verify_source_coverage(env : Map[String, String]) -> Unit {
     fail(
       "Ambiguous coverage must retain both sources without a guessed winner.",
     )
+  }
+}
+
+///|
+async fn verify_field_summary(env : Map[String, String]) -> Unit {
+  let output = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "summarize", "examples/ds000001/provenance-manifest.json",
+      "RepetitionTime", "MissingField",
+    ],
+    env~,
+  ).output()
+  output.check()
+  guard @json.parse(output.stdout())
+    is {
+      "error_count": Number(0.0, ..),
+      "query_count": Number(3.0, ..),
+      "fields": Array(
+        [
+          { "groups": Array([{ "observations": Array(observations), .. }]), .. },
+          { "missing": Array(missing), "groups": Array([]), .. },
+        ]
+      ),
+      ..
+    } &&
+    observations.length() == 3 &&
+    missing.length() == 3 else {
+    fail("Real cohort summary lost observations or missing fields")
+  }
+  let bad = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "summarize", "examples/release-check/ambiguous-manifest.json",
+      "RepetitionTime",
+    ],
+    env~,
+  ).output()
+  guard bad.exit_code() == 1 &&
+    @json.parse(bad.stdout())
+    is {
+      "error_count": Number(1.0, ..),
+      "fields": Array([{ "missing": Array([]), "groups": Array([]), .. }]),
+      ..
+    } else {
+    fail("Unresolved cohort became missing metadata")
   }
 }
