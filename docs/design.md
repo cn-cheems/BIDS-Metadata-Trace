@@ -24,6 +24,8 @@ The raw MRI profile is versioned by documented scope rather than a claim of comp
 
 ## Architecture
 
+Source coverage reverses the scan query into source accountability: every supplied sidecar lists applicable indexed scans and exact winning/shadowed field names from successful resolution. Errors suppress guessed contribution while preserving all affected source paths and diagnostics. It is an indexed-scan projection, not a disk-wide unused-file verdict.
+
 Coordinated edits extend planning from one source to a distinct-source patch set. Typed MoonBit patches or strict JSON batches normalize to the same immutable model. All operations read the baseline; the implementation builds exactly one final index and one before/after comparison, retaining evidence even for edited sources with no indexed scan. Duplicate targets and invalid removals reject the plan. Coordinated shrinking and growth are judged by final snapshot limits; there are no observable partial snapshots and no filesystem transaction claim.
 
 Offline review bundles close the handoff between a curator and reviewer. Version1 embeds the complete before/after manifests, selected policy and expected full report; loading recomputes the report and rejects any evidence mismatch using canonical numeric-token-sensitive JSON. An indeterminate decision remains indeterminate. The bundle proves reproducibility of its contents, without attesting who supplied the snapshots or how they were captured. Both library and CLI work without remote services.

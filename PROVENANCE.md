@@ -29,6 +29,8 @@ Coordinated edit fixtures, tests and batch semantics are authored Apache-2.0 res
 
 ## Related work
 
+Source-coverage accounting and tests are authored Apache-2.0 resources. Coverage classification is project behavior over indexed scans, not a BIDS deletion rule. Follow-up queries on 2026-10-09 included `MoonBit BIDS metadata provenance source coverage cohort CSV`; [PyBIDS's official tutorial](https://bids-standard.github.io/pybids/examples/pybids_tutorial.html) documents cross-file metadata indexing and queries. This motivates curator review workflows but does not establish MoonBit ecosystem uniqueness. No PyBIDS code or tests are copied.
+
 Follow-up boundary review on 2026-10-09 searched `MoonBit BIDS metadata edit batch GitHub Mooncakes`. [moonbit-notary 0.1.0](https://mooncakes.io/docs/hcjbat/moonbit-notary) (Apache-2.0) documents evidence manifests, fingerprints and policy assessment (`ManifestBuilder`, `EvidenceBatch::from_manifest`, `assess_batch`); the checked public description does not cover MRI sidecar applicability or inherited-field edit planning. The contribution here is coordinated BIDS-source editing with final scan provenance, rather than a general evidence or hashing toolkit. This bounded review cannot establish absence of private/unindexed overlapping projects. No notary implementation, tests or format are reused.
 
 The following projects were checked on 2026-10-08:

@@ -4,7 +4,7 @@ extern "wasm" fn exit(code : Int) -> Unit = "wasi_snapshot_preview1" "proc_exit"
 
 ///|
 fn usage() -> String {
-  "Usage: bids-metadata-trace discover DATASET_DIR [--manifest-only] | plan MANIFEST.json SIDECAR_PATH PATCH.json [--manifest-only] | plan-batch MANIFEST.json BATCH.json [--manifest-only] | bundle BEFORE.json AFTER.json [--effective-only] | replay BUNDLE.json | resolve MANIFEST.json DATA_PATH | audit MANIFEST.json [DATA_PATH ...] | diff BEFORE.json AFTER.json | check BEFORE.json AFTER.json [--effective-only]"
+  "Usage: bids-metadata-trace discover DATASET_DIR [--manifest-only] | sources MANIFEST.json | plan MANIFEST.json SIDECAR_PATH PATCH.json [--manifest-only] | plan-batch MANIFEST.json BATCH.json [--manifest-only] | bundle BEFORE.json AFTER.json [--effective-only] | replay BUNDLE.json | resolve MANIFEST.json DATA_PATH | audit MANIFEST.json [DATA_PATH ...] | diff BEFORE.json AFTER.json | check BEFORE.json AFTER.json [--effective-only]"
 }
 
 ///|
@@ -98,6 +98,7 @@ async fn main {
   if args.length() < 3 ||
     !(((args[1] == "resolve" || args[1] == "diff") && args.length() == 4) ||
     args[1] == "audit" ||
+    (args[1] == "sources" && args.length() == 3) ||
     (args[1] == "replay" && args.length() == 3) ||
     (
       args[1] == "plan-batch" &&
@@ -148,7 +149,13 @@ async fn main {
       return
     }
     let index = load_manifest(args[2])
-    if args[1] == "bundle" {
+    if args[1] == "sources" {
+      let report = index.source_coverage()
+      println(report.to_json())
+      if report.error_count() > 0 {
+        exit(1)
+      }
+    } else if args[1] == "bundle" {
       let policy = if args.length() == 5 {
         @trace.ReleasePolicy::EffectiveValues
       } else {

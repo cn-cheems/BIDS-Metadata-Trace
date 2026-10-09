@@ -395,6 +395,7 @@ async fn main {
   }
   clean_review_directory(review_dir)
   verify_batch_workflow(env)
+  verify_source_coverage(env)
   println("Verified core targets and real-data Wasm CLI.")
 }
 
@@ -553,4 +554,59 @@ async fn verify_batch_workflow(env : Map[String, String]) -> Unit {
     )
   }
   clean_review_directory(root)
+}
+
+///|
+async fn verify_source_coverage(env : Map[String, String]) -> Unit {
+  let output = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "sources", "examples/ds000001/provenance-manifest.json",
+    ],
+    env~,
+  ).output()
+  output.check()
+  guard @json.parse(output.stdout())
+    is {
+      "scope": String("indexed_scans"),
+      "scan_count": Number(3.0, ..),
+      "error_count": Number(0.0, ..),
+      "entries": Array(
+        [
+          { "winning_paths": Array([_]), .. },
+          {
+            "winning_paths": Array(winners),
+            "fully_shadowed_paths": Array([]),
+            ..
+          },
+        ]
+      ),
+      ..
+    } &&
+    winners.length() == 3 else {
+    fail(
+      "Source coverage must retain the partially shadowed root and local source across three real scans.",
+    )
+  }
+  let bad = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "sources", "examples/release-check/ambiguous-manifest.json",
+    ],
+    env~,
+  ).output()
+  guard bad.exit_code() == 1 &&
+    @json.parse(bad.stdout())
+    is {
+      "error_count": Number(1.0, ..),
+      "diagnostics": Array([{ "code": String("ambiguous_inheritance"), .. }]),
+      "entries": Array(
+        [{ "winning_paths": Array([]), .. }, { "winning_paths": Array([]), .. }]
+      ),
+      ..
+    } else {
+    fail(
+      "Ambiguous coverage must retain both sources without a guessed winner.",
+    )
+  }
 }

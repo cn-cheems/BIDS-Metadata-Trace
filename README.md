@@ -40,6 +40,7 @@ Import `cn-cheems/bids_metadata_trace` as `@trace` in your `moon.pkg`. This modu
 - `resolved.to_json()` exports effective metadata; `to_report_json()` includes applied sidecars and field history.
 - `index.to_manifest_json()` exports the complete input snapshot for reproducible reloading.
 - `index.audit(paths)` retains every query occurrence in request order, including duplicates. `audit_all()` uses sorted indexed paths. `report.entries()` returns success or diagnostic per query; `error_count()` and `to_json()` support release checks.
+- `index.source_coverage()` accounts for every sidecar within indexed scans: applicability, winning/fully-shadowed scan paths, per-scan winning/shadowed fields and unresolved evidence. Empty sources are retained; `unmatched_paths()` means no indexed target, not permission to delete a source.
 - `before.compare(after)` reports the sorted union of scan paths, with `ImpactKind`, typed `FieldChangeKind`, full before/after evidence, per-field histories and source-chain changes. `changed_count()` excludes indeterminate scans; always also inspect `error_count()`.
 - `impact.release_check(ReleasePolicy)` produces a reusable release decision, sorted affected/unresolved paths and the complete impact evidence. `AllChanges` includes provenance; `EffectiveValues` checks exact values and scan inventory. `Indeterminate` always takes priority over detected changes.
 - `index.plan_edit(sidecar_path, MetadataPatch::from_json(text))` proposes an edit to one existing source, retaining complete before/after snapshots and impact evidence. `plan.updated_sidecar_json()` includes untouched metadata; `plan.after()` is a reusable candidate index.
@@ -199,6 +200,16 @@ The reviewer needs only the bundle and this tool. The version1 format has exactl
 Import rejects unknown controls, unsupported versions, duplicate decoded keys at any depth and mismatched expected evidence. It reloads both snapshots under the original profile, recomputes the entire report and compares canonical JSON exactly, including number tokens and policy-ignored provenance. Deleted evidence, stale inputs or changed policy with a stale report fail with a diagnostic. Coordinated inputs with a matching new report are valid: this is content replay, without signatures or proof of authorship, source authenticity or filesystem completeness.
 
 `bundle` and `replay` exit 0 for successful capture or verified reproduction, even when the retained release decision is `changes_detected` or `indeterminate`. Use `check` for a failing release gate. Invalid input, inconsistent evidence and IO failures exit 1 with a diagnostic on stderr and no completed stdout report. Bundle input/canonical output is limited to 16,777,216 UTF-16 code units and input to 80 containers; each embedded snapshot keeps its 2,097,152-unit and metadata 64-container limits. The CLI also rejects bundle files larger than 64 MiB on disk. These are input/serialization limits, not a strict memory bound for comparison, which retains complete per-scan evidence.
+
+## Review source coverage
+
+```sh
+moon run cmd/main --target wasm -- sources examples/ds000001/provenance-manifest.json
+```
+
+The real-path fixture's synthetic run-01 source wins `RepetitionTime` for that scan. The root source still wins `TaskName` there and both fields for runs 02/03. Coverage reports each field separately, so a partially shadowed source is not mislabeled as wholly unused. Every supplied source appears, including empty sources and sources without applicable indexed scans. Source and scan ordering is deterministic. Resolution failures retain diagnostics and applicable paths, with no guessed winner or shadowed assignment; a completed report exits 1 if any scan is unresolved, otherwise 0.
+
+This is a projection over the supplied snapshot's indexed scans. Unmatched sources may serve unindexed data; coverage neither inspects other files nor recommends automatic deletion. Empty applicable sources affect the applied chain even though they assign no fields. Correcting input and rerunning starts a fresh report. The library and command use the existing supported raw-MRI boundary.
 
 ## Sources and license
 

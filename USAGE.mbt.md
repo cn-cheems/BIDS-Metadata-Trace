@@ -1,5 +1,22 @@
 # Executable library usage
 
+```mbt check
+///|
+test "source coverage accounts for a completely shadowed parent" {
+  let path = "sub-01/func/sub-01_task-rest_bold.nii"
+  let index = @trace.DatasetIndex::from_manifest([path], [
+    @trace.SidecarInput::new("task-rest_bold.json", "{\"x\":1}"),
+    @trace.SidecarInput::new(
+      "sub-01/func/sub-01_task-rest_bold.json", "{\"x\":2}",
+    ),
+  ])
+  let coverage = index.source_coverage()
+  assert_eq(coverage.entries()[1].fully_shadowed_paths(), [path])
+  assert_eq(coverage.entries()[1].winning_paths(), [])
+  assert_eq(coverage.error_count(), 0)
+}
+```
+
 Build a coordinated plan directly from typed MoonBit patches.
 
 ```mbt check

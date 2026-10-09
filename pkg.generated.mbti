@@ -51,6 +51,7 @@ pub fn DatasetIndex::from_manifest(Array[String], Array[SidecarInput]) -> Self r
 pub fn DatasetIndex::plan_edit(Self, String, MetadataPatch) -> EditPlan raise TraceError
 pub fn DatasetIndex::plan_edits(Self, EditBatch) -> BatchEditPlan raise TraceError
 pub fn DatasetIndex::resolve(Self, String) -> ResolvedMetadata raise TraceError
+pub fn DatasetIndex::source_coverage(Self) -> SourceCoverageReport
 pub fn DatasetIndex::to_manifest_json(Self) -> String
 
 pub(all) struct Diagnostic {
@@ -213,6 +214,25 @@ pub struct SidecarInput {
   // private fields
 }
 pub fn SidecarInput::new(String, String) -> Self
+
+pub struct SourceCoverageEntry {
+  // private fields
+}
+pub fn SourceCoverageEntry::applicable_paths(Self) -> Array[String]
+pub fn SourceCoverageEntry::fully_shadowed_paths(Self) -> Array[String]
+pub fn SourceCoverageEntry::metadata_keys(Self) -> Array[String]
+pub fn SourceCoverageEntry::path(Self) -> String
+pub fn SourceCoverageEntry::unresolved_paths(Self) -> Array[String]
+pub fn SourceCoverageEntry::winning_paths(Self) -> Array[String]
+
+pub struct SourceCoverageReport {
+  // private fields
+}
+pub fn SourceCoverageReport::diagnostics(Self) -> Array[Diagnostic]
+pub fn SourceCoverageReport::entries(Self) -> Array[SourceCoverageEntry]
+pub fn SourceCoverageReport::error_count(Self) -> Int
+pub fn SourceCoverageReport::to_json(Self) -> String
+pub fn SourceCoverageReport::unmatched_paths(Self) -> Array[String]
 
 // Type aliases
 
