@@ -43,6 +43,7 @@ Import `cn-cheems/bids_metadata_trace` as `@trace` in your `moon.pkg`. This modu
 - `before.compare(after)` reports the sorted union of scan paths, with `ImpactKind`, typed `FieldChangeKind`, full before/after evidence, per-field histories and source-chain changes. `changed_count()` excludes indeterminate scans; always also inspect `error_count()`.
 - `impact.release_check(ReleasePolicy)` produces a reusable release decision, sorted affected/unresolved paths and the complete impact evidence. `AllChanges` includes provenance; `EffectiveValues` checks exact values and scan inventory. `Indeterminate` always takes priority over detected changes.
 - `index.plan_edit(sidecar_path, MetadataPatch::from_json(text))` proposes an edit to one existing source, retaining complete before/after snapshots and impact evidence. `plan.updated_sidecar_json()` includes untouched metadata; `plan.after()` is a reusable candidate index.
+- `ReviewBundle::create(before, after, policy)` captures complete snapshots and the complete release check. `ReviewBundle::from_json(text)` recomputes and verifies all expected evidence; `bundle.report()` exposes the verified decision.
 
 See the compiler-generated [public interface](pkg.generated.mbti) and [executable library examples](USAGE.mbt.md).
 
@@ -68,6 +69,7 @@ Every numeric token is explicitly retained, including `-0`, large integers, deci
 
 ```sh
 moon fmt
+moon fmt scripts/verify.mbtx
 moon info --target all
 moon check --target all --deny-warn
 moon test --target all --deny-warn
@@ -77,7 +79,7 @@ Tests cover inheritance, source histories, ambiguity, scope errors, numeric pres
 
 ## Roadmap
 
-Implemented: inheritance/provenance, recoverable batch audit, snapshot impact comparison, policy-based release checks, directory discovery with an explicit inventory report and metadata edit planning. Next: replayable review bundles, then additional raw-data profiles backed by specification and fixtures. Planned capabilities require separate implementation. Full BIDS validation is not implemented.
+Implemented: inheritance/provenance, recoverable batch audit, snapshot impact comparison, policy-based release checks, directory discovery with an explicit inventory report, metadata edit planning and replayable review bundles. Next: additional raw-data profiles backed by specification and fixtures, then explicit multi-source edit workflows. Planned capabilities require separate implementation. Full BIDS validation is not implemented.
 
 ## Batch review example
 
@@ -157,6 +159,19 @@ The authored patch is `{"set":{"RepetitionTime":3.0},"remove":[]}`. It proposes 
 Both patch controls are required. `set` replaces whole top-level field values, including explicit `null`; `remove` deletes only explicitly named fields from the selected existing sidecar. A removed local override can expose an inherited parent value. Other fields, nested unknown values and numeric tokens are preserved. Unknown controls, repeated removal names, set/remove conflicts, absent removal fields, unknown sidecar paths and depth/size violations fail before producing a plan; the baseline remains usable. Creating/removing sidecars and recursive JSON patch operations are outside this capability.
 
 Exit 0 means the plan has determinate scan impacts, including expected changes. An indeterminate impact produces the completed plan on stdout and exit 1; input/IO errors produce only a diagnostic on stderr. Inspect impact diagnostics before using a candidate. The exported manifest has the existing reloadable snapshot bound; complete plan reports repeat provenance evidence and can be larger.
+
+## Share and replay an offline review
+
+```sh
+moon run cmd/main --target wasm -- bundle examples/ds000001/manifest.json examples/ds000001/changed-manifest.json > review.json
+moon run cmd/main --target wasm -- replay review.json
+```
+
+The reviewer needs only the bundle and this tool. The version1 format has exactly six controls: `format: "bids-metadata-trace/review-bundle"`, integer token `version: 1`, complete `before`/`after` manifests, `policy` (`all_changes` or `effective_values`) and the complete `expected` release report. Use `bundle ... --effective-only` to select the effective-value policy; the default retains all-change policy semantics. Library accessors return the immutable snapshots and recomputed report for further queries.
+
+Import rejects unknown controls, unsupported versions, duplicate decoded keys at any depth and mismatched expected evidence. It reloads both snapshots under the original profile, recomputes the entire report and compares canonical JSON exactly, including number tokens and policy-ignored provenance. Deleted evidence, stale inputs or changed policy with a stale report fail with a diagnostic. Coordinated inputs with a matching new report are valid: this is content replay, without signatures or proof of authorship, source authenticity or filesystem completeness.
+
+`bundle` and `replay` exit 0 for successful capture or verified reproduction, even when the retained release decision is `changes_detected` or `indeterminate`. Use `check` for a failing release gate. Invalid input, inconsistent evidence and IO failures exit 1 with a diagnostic on stderr and no completed stdout report. Bundle input/canonical output is limited to 16,777,216 UTF-16 code units and input to 80 containers; each embedded snapshot keeps its 2,097,152-unit and metadata 64-container limits. The CLI also rejects bundle files larger than 64 MiB on disk. These are input/serialization limits, not a strict memory bound for comparison, which retains complete per-scan evidence.
 
 ## Sources and license
 

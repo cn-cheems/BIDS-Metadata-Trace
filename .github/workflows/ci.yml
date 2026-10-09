@@ -28,6 +28,7 @@ jobs:
       - run: moon version --all
       - run: moon update
       - run: moon fmt
+      - run: moon fmt scripts/verify.mbtx
       - run: git diff --exit-code
       - run: moon info --target all
       - run: git diff --exit-code

@@ -24,6 +24,8 @@ The raw MRI profile is versioned by documented scope rather than a claim of comp
 
 ## Architecture
 
+Offline review bundles close the handoff between a curator and reviewer. Version1 embeds the complete before/after manifests, selected policy and expected full report; loading recomputes the report and rejects any evidence mismatch using canonical numeric-token-sensitive JSON. An indeterminate decision remains indeterminate. The bundle proves reproducibility of its contents, without attesting who supplied the snapshots or how they were captured. Both library and CLI work without remote services.
+
 - Root package owns all public types and domain behavior; its private files separate source handling, selectors, manifests, resolution and reports.
 - `cmd/main` is the Moonrun/Wasm filesystem adapter. The root core has no filesystem, network, clock or process dependency.
 - Generated interfaces are committed and regenerated with `moon info --target all`.

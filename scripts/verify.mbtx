@@ -1,115 +1,398 @@
+///|
 import {
   "moonbitlang/async@0.22.4",
   "moonbitlang/async/shell",
+  "moonbitlang/async/fs",
   "moonbitlang/core/env",
   "moonbitlang/core/json",
 }
 
+///|
+async fn clean_review_directory(root : String) -> Unit {
+  let absolute = @fs.realpath(root)
+  let normalized = absolute.replace_all(old="\\", new="/")
+  guard normalized.split("/").last().unwrap().has_prefix("bids-trace-review.") else {
+    fail("Refusing cleanup outside the dedicated review test directory.")
+  }
+  @fs.rmdir(absolute, recursive=true)
+}
+
+///|
 async fn main {
   let env : Map[String, String] = Map([])
   // Optional portable compiler; never change the machine's global PATH.
-  if @env.get_env_var("BIDS_TRACE_CC") is Some(compiler) { env["MOON_CC"] = compiler }
-  if !@env.args().contains("--e2e-only") {
-  @shell.Cmd("moon", ["fmt"], env~).run()
-  @shell.Cmd("moon", ["info", "--target", "all"], env~).run()
-  @shell.Cmd("moon", ["check", "--target", "all", "--deny-warn"], env~).run()
-  for target in ["wasm", "wasm-gc", "js", "native"] {
-    @shell.Cmd("moon", ["test", "--target", target, "--deny-warn"], env~).run()
+  if @env.get_env_var("BIDS_TRACE_CC") is Some(compiler) {
+    env["MOON_CC"] = compiler
   }
+  if !@env.args().contains("--e2e-only") {
+    @shell.Cmd("moon", ["fmt"], env~).run()
+    @shell.Cmd("moon", ["fmt", "scripts/verify.mbtx"], env~).run()
+    @shell.Cmd("moon", ["info", "--target", "all"], env~).run()
+    @shell.Cmd("moon", ["check", "--target", "all", "--deny-warn"], env~).run()
+    for target in ["wasm", "wasm-gc", "js", "native"] {
+      @shell.Cmd("moon", ["test", "--target", target, "--deny-warn"], env~).run()
+    }
   }
   let path = "sub-01/func/sub-01_task-balloonanalogrisktask_run-01_bold.nii.gz"
-  let output = @shell.Cmd("moon", ["run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "resolve", "examples/ds000001/manifest.json", path], env~).output()
+  let output = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "resolve", "examples/ds000001/manifest.json",
+      path,
+    ],
+    env~,
+  ).output()
   output.check()
-  guard @json.parse(output.stdout()) is {
-    "data_path": String(actual),
-    "metadata": { "RepetitionTime": Number(2.0, ..), .. },
-    "fields": { "RepetitionTime": Array([{"path": String(source), ..}]), .. },
-    ..
-  } && actual == path && source == "task-balloonanalogrisktask_bold.json" else {
-    fail("Real-data CLI report did not match the independently recorded fixture.")
+  guard @json.parse(output.stdout())
+    is {
+      "data_path": String(actual),
+      "metadata": { "RepetitionTime": Number(2.0, ..), .. },
+      "fields": {
+        "RepetitionTime": Array([{ "path": String(source), .. }]),
+        ..
+      },
+      ..
+    } &&
+    actual == path &&
+    source == "task-balloonanalogrisktask_bold.json" else {
+    fail(
+      "Real-data CLI report did not match the independently recorded fixture.",
+    )
   }
-  let batch = @shell.Cmd("moon", ["run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "audit", "examples/ds000001/manifest.json"], env~).output()
+  let batch = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "audit", "examples/ds000001/manifest.json",
+    ],
+    env~,
+  ).output()
   batch.check()
-  guard @json.parse(batch.stdout()) is {
-    "error_count": Number(0.0, ..), "entries": Array(entries), ..
-  } && entries.length() == 3 else { fail("Real-data audit must cover all three scans.") }
-  let recovered = @shell.Cmd("moon", ["run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "audit", "examples/ds000001/manifest.json", "absent", path], env~).output()
-  guard recovered.exit_code() != 0 && @json.parse(recovered.stdout()) is {
-    "error_count": Number(1.0, ..),
-    "entries": Array([{"status": String("error"), ..}, {"status": String("resolved"), ..}]), ..
-  } else { fail("Audit must report a failed query then a successful one.") }
-  let compared = @shell.Cmd("moon", ["run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "diff", "examples/ds000001/manifest.json", "examples/ds000001/changed-manifest.json"], env~).output()
+  guard @json.parse(batch.stdout())
+    is { "error_count": Number(0.0, ..), "entries": Array(entries), .. } &&
+    entries.length() == 3 else {
+    fail("Real-data audit must cover all three scans.")
+  }
+  let recovered = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "audit", "examples/ds000001/manifest.json",
+      "absent", path,
+    ],
+    env~,
+  ).output()
+  guard recovered.exit_code() != 0 &&
+    @json.parse(recovered.stdout())
+    is {
+      "error_count": Number(1.0, ..),
+      "entries": Array(
+        [
+          { "status": String("error"), .. },
+          { "status": String("resolved"), .. },
+        ]
+      ),
+      ..
+    } else {
+    fail("Audit must report a failed query then a successful one.")
+  }
+  let compared = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "diff", "examples/ds000001/manifest.json",
+      "examples/ds000001/changed-manifest.json",
+    ],
+    env~,
+  ).output()
   compared.check()
-  guard @json.parse(compared.stdout()) is {
-    "changed_count": Number(3.0, ..), "error_count": Number(0.0, ..), "entries": Array(impacts), ..
-  } && impacts.length() == 3 else { fail("The synthetic root edit must impact all three real scan paths.") }
+  guard @json.parse(compared.stdout())
+    is {
+      "changed_count": Number(3.0, ..),
+      "error_count": Number(0.0, ..),
+      "entries": Array(impacts),
+      ..
+    } &&
+    impacts.length() == 3 else {
+    fail("The synthetic root edit must impact all three real scan paths.")
+  }
   for impact in impacts {
-    guard impact is { "kind": String("changed"), "changes": Array([{
-      "field": String("RepetitionTime"), "kind": String("value_changed"),
-      "before": Number(2.0, ..), "after": Number(3.0, ..), ..
-    }]), .. } else { fail("Each scan must show exactly the repetition-time change.") }
+    guard impact
+      is {
+        "kind": String("changed"),
+        "changes": Array(
+          [
+            {
+              "field": String("RepetitionTime"),
+              "kind": String("value_changed"),
+              "before": Number(2.0, ..),
+              "after": Number(3.0, ..),
+              ..
+            },
+          ]
+        ),
+        ..
+      } else {
+      fail("Each scan must show exactly the repetition-time change.")
+    }
   }
   let fixture = "examples/ds000001/manifest.json"
   let changed = "examples/ds000001/changed-manifest.json"
   let provenance = "examples/ds000001/provenance-manifest.json"
   let ambiguous = "examples/release-check/ambiguous-manifest.json"
-  for (before, after, options, expected_exit, decision, affected, unresolved) in [
-    (fixture, fixture, [], 0, "pass", 0, 0),
-    (fixture, changed, [], 1, "changes_detected", 3, 0),
-    (fixture, changed, ["--effective-only"], 1, "changes_detected", 3, 0),
-    (fixture, provenance, [], 1, "changes_detected", 1, 0),
-    (fixture, provenance, ["--effective-only"], 0, "pass", 0, 0),
-    (ambiguous, ambiguous, [], 1, "indeterminate", 0, 1),
-    (ambiguous, ambiguous, ["--effective-only"], 1, "indeterminate", 0, 1)
-  ] {
-    let args = ["run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "check", before, after]
+  for
+    (before, after, options, expected_exit, decision, affected, unresolved) in [
+      (fixture, fixture, [], 0, "pass", 0, 0),
+      (fixture, changed, [], 1, "changes_detected", 3, 0),
+      (fixture, changed, ["--effective-only"], 1, "changes_detected", 3, 0),
+      (fixture, provenance, [], 1, "changes_detected", 1, 0),
+      (fixture, provenance, ["--effective-only"], 0, "pass", 0, 0),
+      (ambiguous, ambiguous, [], 1, "indeterminate", 0, 1),
+      (ambiguous, ambiguous, ["--effective-only"], 1, "indeterminate", 0, 1),
+    ] {
+    let args = [
+      "run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "check", before,
+      after,
+    ]
     args.append(options)
     let output = @shell.Cmd("moon", args, env~).output()
-    guard output.exit_code() == expected_exit && @json.parse(output.stdout()) is {
-      "decision": String(actual), "affected_paths": Array(affected_paths),
-      "unresolved_paths": Array(unresolved_paths), "impact": {"entries": Array(_), ..}, ..
-    } && actual == decision && affected_paths.length() == affected && unresolved_paths.length() == unresolved else {
-      fail("Release check exit, decision or retained path evidence is incorrect.")
+    guard output.exit_code() == expected_exit &&
+      @json.parse(output.stdout())
+      is {
+        "decision": String(actual),
+        "affected_paths": Array(affected_paths),
+        "unresolved_paths": Array(unresolved_paths),
+        "impact": { "entries": Array(_), .. },
+        ..
+      } &&
+      actual == decision &&
+      affected_paths.length() == affected &&
+      unresolved_paths.length() == unresolved else {
+      fail(
+        "Release check exit, decision or retained path evidence is incorrect.",
+      )
     }
   }
   let missing = "examples/release-check/does-not-exist.json"
-  let input_error = @shell.Cmd("moon", ["run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "check", fixture, missing], env~).output()
-  guard input_error.exit_code() == 1 && input_error.stdout().is_empty() && @json.parse(input_error.stderr()) is {
-    "code": String("io_error"), "path": String(actual), ..
-  } && actual == missing else { fail("Missing snapshot must fail with its actual IO path, not an empty successful report.") }
-  let usage_error = @shell.Cmd("moon", ["run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "check", fixture, fixture, "--unknown"], env~).output()
-  guard usage_error.exit_code() == 1 && usage_error.stdout().is_empty() && usage_error.stderr().contains("Usage:") else {
+  let input_error = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "check", fixture,
+      missing,
+    ],
+    env~,
+  ).output()
+  guard input_error.exit_code() == 1 &&
+    input_error.stdout().is_empty() &&
+    @json.parse(input_error.stderr())
+    is { "code": String("io_error"), "path": String(actual), .. } &&
+    actual == missing else {
+    fail(
+      "Missing snapshot must fail with its actual IO path, not an empty successful report.",
+    )
+  }
+  let usage_error = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "check", fixture,
+      fixture, "--unknown",
+    ],
+    env~,
+  ).output()
+  guard usage_error.exit_code() == 1 &&
+    usage_error.stdout().is_empty() &&
+    usage_error.stderr().contains("Usage:") else {
     fail("Unsupported release policy option must fail explicitly.")
   }
   @shell.Cmd("git", ["diff", "--check"]).run()
-  let discovery = @shell.Cmd("moon", ["run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "discover", "examples/ds000001/tree"], env~).output()
+  let discovery = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "discover", "examples/ds000001/tree",
+    ],
+    env~,
+  ).output()
   discovery.check()
-  guard @json.parse(discovery.stdout()) is {
-    "status": String("complete_supported_inventory"),
-    "manifest": {"files": Array(found), "sidecars": Array([{"metadata": {"RepetitionTime": Number(2.0, ..), ..}, ..}]), ..},
-    "auxiliary_paths": Array([String("README")]), "excluded_paths": Array([]), ..
-  } && found.length() == 3 else { fail("Discovery must retain all three real fixture paths and metadata.") }
-  let exported = @shell.Cmd("moon", ["run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "discover", "examples/ds000001/tree", "--manifest-only"], env~).output()
+  guard @json.parse(discovery.stdout())
+    is {
+      "status": String("complete_supported_inventory"),
+      "manifest": {
+        "files": Array(found),
+        "sidecars": Array(
+          [{ "metadata": { "RepetitionTime": Number(2.0, ..), .. }, .. }]
+        ),
+        ..
+      },
+      "auxiliary_paths": Array([String("README")]),
+      "excluded_paths": Array([]),
+      ..
+    } &&
+    found.length() == 3 else {
+    fail("Discovery must retain all three real fixture paths and metadata.")
+  }
+  let exported = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "discover", "examples/ds000001/tree",
+      "--manifest-only",
+    ],
+    env~,
+  ).output()
   exported.check()
-  guard @json.parse(exported.stdout()) is {"files": Array(exported_paths), "sidecars": Array([_]), ..} && exported_paths.length() == 3 && exported.stdout().contains("2.0") else { fail("The discovered manifest must preserve numeric tokens.") }
-  let plan_args = ["run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "plan", fixture, "task-balloonanalogrisktask_bold.json", "examples/edit-plan/change-repetition-time.json"]
+  guard @json.parse(exported.stdout())
+    is { "files": Array(exported_paths), "sidecars": Array([_]), .. } &&
+    exported_paths.length() == 3 &&
+    exported.stdout().contains("2.0") else {
+    fail("The discovered manifest must preserve numeric tokens.")
+  }
+  let plan_args = [
+    "run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "plan", fixture,
+    "task-balloonanalogrisktask_bold.json", "examples/edit-plan/change-repetition-time.json",
+  ]
   let planned = @shell.Cmd("moon", plan_args, env~).output()
   planned.check()
-  guard @json.parse(planned.stdout()) is {
-    "before_sidecar": {"RepetitionTime": Number(2.0, ..), ..},
-    "after_sidecar": {"RepetitionTime": Number(3.0, ..), "TaskName": String("balloon analog risk task"), ..},
-    "before_manifest": Object(_), "after_manifest": Object(_),
-    "impact": {"changed_count": Number(3.0, ..), "error_count": Number(0.0, ..), ..}, ..
-  } else { fail("Edit planning must retain both snapshots, untouched TaskName and three affected scans.") }
+  guard @json.parse(planned.stdout())
+    is {
+      "before_sidecar": { "RepetitionTime": Number(2.0, ..), .. },
+      "after_sidecar": {
+        "RepetitionTime": Number(3.0, ..),
+        "TaskName": String("balloon analog risk task"),
+        ..
+      },
+      "before_manifest": Object(_),
+      "after_manifest": Object(_),
+      "impact": {
+        "changed_count": Number(3.0, ..),
+        "error_count": Number(0.0, ..),
+        ..
+      },
+      ..
+    } else {
+    fail(
+      "Edit planning must retain both snapshots, untouched TaskName and three affected scans.",
+    )
+  }
   let plan_export_args = plan_args.copy()
   plan_export_args.push("--manifest-only")
   let candidate = @shell.Cmd("moon", plan_export_args, env~).output()
   candidate.check()
-  guard @json.parse(candidate.stdout()) is {"files": Array(candidate_paths), "sidecars": Array([{"metadata": {"RepetitionTime": Number(3.0, ..), ..}, ..}]), ..} && candidate_paths.length() == 3 && candidate.stdout().contains("3.0") else { fail("The planned snapshot must remain reloadable with exact number tokens.") }
+  guard @json.parse(candidate.stdout())
+    is {
+      "files": Array(candidate_paths),
+      "sidecars": Array(
+        [{ "metadata": { "RepetitionTime": Number(3.0, ..), .. }, .. }]
+      ),
+      ..
+    } &&
+    candidate_paths.length() == 3 &&
+    candidate.stdout().contains("3.0") else {
+    fail(
+      "The planned snapshot must remain reloadable with exact number tokens.",
+    )
+  }
   let missing_patch = "examples/edit-plan/does-not-exist.json"
-  let failed_plan = @shell.Cmd("moon", ["run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "plan", fixture, "task-balloonanalogrisktask_bold.json", missing_patch], env~).output()
-  guard failed_plan.exit_code() == 1 && failed_plan.stdout().is_empty() && @json.parse(failed_plan.stderr()) is {"code": String("io_error"), "path": String(actual_patch), ..} && actual_patch == missing_patch else { fail("Patch IO failures must identify the actual patch file.") }
-  let unresolved_plan = @shell.Cmd("moon", ["run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "plan", ambiguous, "bold.json", "examples/edit-plan/change-repetition-time.json"], env~).output()
-  guard unresolved_plan.exit_code() == 1 && @json.parse(unresolved_plan.stdout()) is {"after_manifest": Object(_), "impact": {"error_count": Number(1.0, ..), "entries": Array([{"kind": String("unresolved"), ..}]), ..}, ..} else { fail("An indeterminate plan must retain the complete candidate and impact, and fail the process.") }
+  let failed_plan = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "plan", fixture,
+      "task-balloonanalogrisktask_bold.json", missing_patch,
+    ],
+    env~,
+  ).output()
+  guard failed_plan.exit_code() == 1 &&
+    failed_plan.stdout().is_empty() &&
+    @json.parse(failed_plan.stderr())
+    is { "code": String("io_error"), "path": String(actual_patch), .. } &&
+    actual_patch == missing_patch else {
+    fail("Patch IO failures must identify the actual patch file.")
+  }
+  let unresolved_plan = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "plan", ambiguous,
+      "bold.json", "examples/edit-plan/change-repetition-time.json",
+    ],
+    env~,
+  ).output()
+  guard unresolved_plan.exit_code() == 1 &&
+    @json.parse(unresolved_plan.stdout())
+    is {
+      "after_manifest": Object(_),
+      "impact": {
+        "error_count": Number(1.0, ..),
+        "entries": Array([{ "kind": String("unresolved"), .. }]),
+        ..
+      },
+      ..
+    } else {
+    fail(
+      "An indeterminate plan must retain the complete candidate and impact, and fail the process.",
+    )
+  }
+  let review_dir = @fs.tmpdir(prefix="bids-trace-review")
+  errdefer clean_review_directory(review_dir)
+  for
+    (before, after, options, decision) in [
+      (fixture, changed, [], "changes_detected"),
+      (fixture, provenance, ["--effective-only"], "pass"),
+      (ambiguous, ambiguous, [], "indeterminate"),
+    ] {
+    let bundle_args = [
+      "run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "bundle", before,
+      after,
+    ]
+    bundle_args.append(options)
+    let captured = @shell.Cmd("moon", bundle_args, env~).output()
+    captured.check()
+    guard @json.parse(captured.stdout())
+      is {
+        "version": Number(1.0, ..),
+        "before": Object(_),
+        "after": Object(_),
+        "expected": { "decision": String(actual), "impact": Object(_), .. },
+        ..
+      } &&
+      actual == decision else {
+      fail("Review capture must retain inputs and the complete decision.")
+    }
+    let bundle_path = review_dir + "/review.json"
+    @fs.write_file(bundle_path, captured.stdout())
+    let replayed = @shell.Cmd(
+      "moon",
+      [
+        "run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "replay", bundle_path,
+      ],
+      env~,
+    ).output()
+    replayed.check()
+    guard @json.parse(replayed.stdout())
+      is { "decision": String(actual), "impact": Object(_), .. } &&
+      actual == decision else {
+      fail(
+        "Verified reproduction must keep the release decision, including indeterminate.",
+      )
+    }
+    if decision == "changes_detected" {
+      @fs.write_file(
+        bundle_path,
+        captured
+        .stdout()
+        .replace(
+          old="\"decision\":\"changes_detected\"",
+          new="\"decision\":\"pass\"",
+        ),
+      )
+      let stale = @shell.Cmd(
+        "moon",
+        [
+          "run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "replay", bundle_path,
+        ],
+        env~,
+      ).output()
+      guard stale.exit_code() == 1 &&
+        stale.stdout().is_empty() &&
+        @json.parse(stale.stderr()) is { "code": String("replay_mismatch"), .. } else {
+        fail("A modified expected decision must reject replay explicitly.")
+      }
+    }
+  }
+  clean_review_directory(review_dir)
   println("Verified core targets and real-data Wasm CLI.")
 }

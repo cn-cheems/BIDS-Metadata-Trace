@@ -23,6 +23,8 @@ The filesystem fixture materializes the same CC0 metadata/path subset. Image-nam
 
 Edit-plan patches and tests are authored Apache-2.0 resources. The sample repetition-time assignment is explicitly synthetic; it is not a corrected scientific observation or an external acquisition. The patch contract is a project-specific whole-field operation format, not an implementation of RFC 6902 or RFC 7396.
 
+The review-bundle format, implementation and replay tests are authored Apache-2.0 resources. They use this project's existing manifests, canonical JSON and release semantics. No external signing, archival or provenance standard is implemented; the bundle makes no authenticity claim.
+
 ## Related work checked on 2026-10-08
 
 - [MoonNIfTI](https://github.com/wangjiale6036-dotcom/moonnifti), MIT: voxel access and coordinate-preserving transformations.

@@ -180,6 +180,16 @@ pub fn ResolvedMetadata::to_json(Self) -> String
 pub fn ResolvedMetadata::to_report_json(Self) -> String
 pub fn ResolvedMetadata::trace(Self, String) -> Array[FieldOrigin]
 
+pub struct ReviewBundle {
+  // private fields
+}
+pub fn ReviewBundle::after(Self) -> DatasetIndex
+pub fn ReviewBundle::before(Self) -> DatasetIndex
+pub fn ReviewBundle::create(DatasetIndex, DatasetIndex, ReleasePolicy) -> Self raise TraceError
+pub fn ReviewBundle::from_json(String) -> Self raise TraceError
+pub fn ReviewBundle::report(Self) -> ReleaseCheck
+pub fn ReviewBundle::to_json(Self) -> String
+
 pub struct SidecarInput {
   // private fields
 }

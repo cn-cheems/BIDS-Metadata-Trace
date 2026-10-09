@@ -4,7 +4,33 @@ extern "wasm" fn exit(code : Int) -> Unit = "wasi_snapshot_preview1" "proc_exit"
 
 ///|
 fn usage() -> String {
-  "Usage: bids-metadata-trace discover DATASET_DIR [--manifest-only] | plan MANIFEST.json SIDECAR_PATH PATCH.json [--manifest-only] | resolve MANIFEST.json DATA_PATH | audit MANIFEST.json [DATA_PATH ...] | diff BEFORE.json AFTER.json | check BEFORE.json AFTER.json [--effective-only]"
+  "Usage: bids-metadata-trace discover DATASET_DIR [--manifest-only] | plan MANIFEST.json SIDECAR_PATH PATCH.json [--manifest-only] | bundle BEFORE.json AFTER.json [--effective-only] | replay BUNDLE.json | resolve MANIFEST.json DATA_PATH | audit MANIFEST.json [DATA_PATH ...] | diff BEFORE.json AFTER.json | check BEFORE.json AFTER.json [--effective-only]"
+}
+
+///|
+async fn load_bundle(path : String) -> @trace.ReviewBundle {
+  try {
+    if @fs.file_size(path) > 67108864L {
+      raise @trace.TraceError({
+        code: "input_limit",
+        path,
+        message: "Review bundle exceeds 64 MiB on disk; split the snapshots.",
+        offset: None,
+        related: [],
+      })
+    }
+    @trace.ReviewBundle::from_json(@fs.read_file(path).text())
+  } catch {
+    @trace.TraceError(diagnostic) => raise @trace.TraceError(diagnostic)
+    error =>
+      raise @trace.TraceError({
+        code: "io_error",
+        path,
+        message: error.to_string(),
+        offset: None,
+        related: [],
+      })
+  }
 }
 
 ///|
@@ -65,13 +91,14 @@ async fn main {
   if args.length() == 2 && (args[1] == "--help" || args[1] == "-h") {
     println(
       usage() +
-      "\nOutputs JSON. Exit: 0 success/pass, 1 failure. check defaults to all changes; --effective-only ignores provenance-only edits but retains their evidence. JSON decision distinguishes changes_detected from indeterminate. Input/IO errors produce a diagnostic on stderr instead of a completed report.",
+      "\nOutputs JSON. Exit: 0 success/pass, 1 failure. check defaults to all changes; --effective-only ignores provenance-only edits but retains their evidence. bundle/replay exit 0 for successful capture/verified reproduction, regardless of release decision; use check for a release gate. JSON decision distinguishes changes_detected from indeterminate. Input/IO errors produce a diagnostic on stderr instead of a completed report.",
     )
     return
   }
   if args.length() < 3 ||
     !(((args[1] == "resolve" || args[1] == "diff") && args.length() == 4) ||
     args[1] == "audit" ||
+    (args[1] == "replay" && args.length() == 3) ||
     (
       args[1] == "plan" &&
       (
@@ -87,7 +114,7 @@ async fn main {
       )
     ) ||
     (
-      args[1] == "check" &&
+      (args[1] == "check" || args[1] == "bundle") &&
       (
         args.length() == 4 ||
         (args.length() == 5 && args[4] == "--effective-only")
@@ -98,6 +125,10 @@ async fn main {
     return
   }
   try {
+    if args[1] == "replay" {
+      println(load_bundle(args[2]).report().to_json())
+      return
+    }
     if args[1] == "discover" {
       let report = discover(args[2])
       println(
@@ -110,7 +141,16 @@ async fn main {
       return
     }
     let index = load_manifest(args[2])
-    if args[1] == "plan" {
+    if args[1] == "bundle" {
+      let policy = if args.length() == 5 {
+        @trace.ReleasePolicy::EffectiveValues
+      } else {
+        @trace.ReleasePolicy::AllChanges
+      }
+      println(
+        @trace.ReviewBundle::create(index, load_manifest(args[3]), policy).to_json(),
+      )
+    } else if args[1] == "plan" {
       let plan = index.plan_edit(args[3], load_patch(args[4]))
       println(
         if args.length() == 6 {

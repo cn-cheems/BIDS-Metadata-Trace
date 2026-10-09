@@ -180,10 +180,19 @@ fn parse_source(
   path : String,
   text : String,
   container_limit? : Int = 64,
+  text_limit? : Int = 2097152,
 ) -> Json raise TraceError {
-  if text.length() > 2097152 {
+  if text.length() > text_limit {
     reject(
-      "input_limit", path, "JSON exceeds 2,097,152 UTF-16 code units; split this input.",
+      "input_limit",
+      path,
+      if text_limit == 2097152 {
+        "JSON exceeds 2,097,152 UTF-16 code units; split this input."
+      } else {
+        "JSON exceeds " +
+        text_limit.to_string() +
+        " UTF-16 code units; split this input."
+      },
     )
   }
   // Bound recursion before parsing. Delimiters inside JSON strings do not count.

@@ -1,5 +1,44 @@
 # Executable library usage
 
+Review bundles carry every input needed to reproduce a release decision.
+
+```mbt check
+///|
+test "an offline review round trip retains exact changes and full evidence" {
+  let path = "sub-01/func/sub-01_task-rest_bold.nii"
+  let before = @trace.DatasetIndex::from_manifest([path], [
+    @trace.SidecarInput::new("task-rest_bold.json", "{\"RepetitionTime\":2.0}"),
+  ])
+  let after = before
+    .plan_edit(
+      "task-rest_bold.json",
+      @trace.MetadataPatch::from_json(
+        "{\"set\":{\"RepetitionTime\":3.0},\"remove\":[]}",
+      ),
+    )
+    .after()
+  let captured = @trace.ReviewBundle::create(
+    before,
+    after,
+    @trace.ReleasePolicy::AllChanges,
+  )
+  let replayed = @trace.ReviewBundle::from_json(captured.to_json())
+  assert_eq(replayed.to_json(), captured.to_json())
+  assert_true(
+    replayed.report().decision() == @trace.ReleaseDecision::ChangesDetected,
+  )
+  assert_eq(replayed.report().affected_paths(), [path])
+  assert_eq(replayed.before().to_manifest_json(), before.to_manifest_json())
+  assert_eq(
+    replayed.report().to_json(),
+    before
+    .compare(after)
+    .release_check(@trace.ReleasePolicy::AllChanges)
+    .to_json(),
+  )
+}
+```
+
 Plan a local removal and inspect its inherited result without changing the baseline.
 
 ```mbt check
