@@ -81,7 +81,7 @@ Tests cover inheritance, source histories, ambiguity, scope errors, numeric pres
 
 ## Roadmap
 
-Implemented: inheritance/provenance, recoverable batch audit, snapshot impact comparison, policy-based release checks, directory discovery with an explicit inventory report, single-source/coordinated multi-source edit planning, replayable review bundles, source coverage, exact-value cohort summaries and CSV review export. Next: additional raw-data profiles backed by specification and fixtures. Planned capabilities require separate implementation. Full BIDS validation is not implemented.
+Implemented: inheritance/provenance, recoverable batch audit, snapshot impact comparison, policy-based release checks, directory discovery with an explicit inventory report, single-source/coordinated multi-source edit planning, atomic source inventory planning, replayable review bundles, source coverage, exact-value cohort summaries, CSV review export and project-specific metadata expectation checks. Next: additional raw-data profiles backed by specification and fixtures. Planned capabilities require separate implementation. Full BIDS validation is not implemented.
 
 ## Batch review example
 
@@ -244,6 +244,21 @@ The authored counterfactual renames the real fixture's root source to `bold.json
 `SourceChanges::new(additions, removals)` or `from_json(text)` accepts `{"add":[{"path":"bold.json","metadata":{}}],"remove":["task-rest_bold.json"]}`. Both controls are required. Unknown controls, duplicate decoded keys, malformed metadata, unsupported paths and duplicate/case-colliding operations fail. An addition must name a source absent from the baseline; removal must name an existing source. Adding and removing the same path is rejected: use metadata edits for replacement. `index.plan_sources(changes)` validates/rebuilds the final inventory once, with unchanged scan paths, then returns `before()`, `after()`, `impact()` and a complete JSON report. Removed empty/unmatched source data remain in the before snapshot even when scan impact is zero.
 
 At most 256 combined operations and 2,097,152 UTF-16 units of canonical change input; JSON envelope depth67 accommodates metadata64. Existing source/final snapshot limits apply. The CLI rejects change files above 8 MiB on disk. Atomic shrink/grow can succeed without constructing an oversized intermediate snapshot. Empty changes are an identity. Failures return no partial plan; resolution ambiguity retains both snapshots and diagnostics, with CLI exit1. Determinate changes exit0. Source disk application and scan creation/deletion remain unsupported; source creation/removal planning is now implemented separately from existing-source patch planning.
+
+## Check acquisition expectations
+
+```sh
+moon run cmd/main --target wasm -- expect examples/ds000001/manifest.json examples/expectations/acquisition.json
+moon run cmd/main --target wasm -- expect examples/ds000001/changed-manifest.json examples/expectations/acquisition.json
+```
+
+The authored project rule requires `RepetitionTime` and `TaskName`, and permits the exact values from the existing real CC0 fixture. All three real scans pass; the synthetic repetition-time edit fails with three `unexpected_value` checks. This gate checks acquisition expectations directly, including errors already present in a baseline; a before/after comparison alone can only describe changes. The command accepts optional scan paths after the expectation file; otherwise it audits every indexed scan. Duplicate queries keep their request positions. `Pass` exits0; `Violations` and `Indeterminate` exit1 with the complete report on stdout. Bad input/IO errors emit a diagnostic on stderr without a completed report.
+
+Load `MetadataExpectations::from_json(text)` using exactly `{"required":["RepetitionTime"],"allowed":{"RepetitionTime":[2.0]}}`. Both controls are mandatory. Required fields must be present after inheritance; explicit null counts as present. An allowed-only field may be absent; when present, its complete JSON value must match one of the exact canonical choices. Unknown metadata, arrays and objects are supported without coercion or nested merging. `2`, `2.0`, `2e0` and negative zero remain distinct. Whitespace, object key order and equivalent string escapes do not distinguish choices. Unknown controls, duplicate required fields/decoded keys/canonical choices, empty or non-array choice sets fail rather than being ignored.
+
+`audit.check_expectations(expected)` returns a report with `decision()`, failed field `violation_count()`, unresolved query `error_count()`, deterministic `to_json()` and defensive `to_json_value()`. Every resolved query retains its complete metadata, applied sources and field assignment history, including unselected fields. Checks include presence, actual value, allowed choices, winner and full trace. Failed queries retain diagnostics without speculative checks. Errors take priority over violations. An empty audit is `Indeterminate` with `empty_audit:true` and zero query errors; select at least one scan to obtain a decision. Empty rules impose no field restrictions on a nonempty resolved audit, while still retaining errors.
+
+Limits: 256 distinct fields across both controls, 1–256 choices per allowed field, 2,097,152 UTF-16 units per input/canonical expectation document and 67 JSON containers; CLI file size at most 8 MiB. This is an explicit project rule, not BIDS schema compliance, image/header validation, numeric tolerance, unit conversion, ranges, cross-field predicates or clinical suitability. Complete repeated evidence can expand beyond input size. Source planning, expectation checks and existing comparison/replay remain separate, composable workflows.
 
 ## Sources and license
 

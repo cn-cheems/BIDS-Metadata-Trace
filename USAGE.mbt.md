@@ -198,3 +198,20 @@ test "plan an added source without changing the baseline" {
   assert_eq(plan.impact().changed_count(), 1)
 }
 ```
+Project-specific expectations check inherited values with complete evidence.
+
+```mbt check
+///|
+test "required acquisition metadata is checked after inheritance" {
+  let path = "sub-01/func/sub-01_task-rest_bold.nii"
+  let index = @trace.DatasetIndex::from_manifest([path], [
+    @trace.SidecarInput::new("task-rest_bold.json", "{\"RepetitionTime\":2.0}"),
+  ])
+  let expected = @trace.MetadataExpectations::from_json(
+    "{\"required\":[\"RepetitionTime\"],\"allowed\":{\"RepetitionTime\":[2.0]}}",
+  )
+  let report = index.audit_all().check_expectations(expected)
+  assert_true(report.decision() == @trace.ExpectationDecision::Pass)
+  assert_eq(report.violation_count(), 0)
+}
+```

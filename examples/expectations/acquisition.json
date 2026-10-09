@@ -1,0 +1,7 @@
+{
+  "required": ["RepetitionTime", "TaskName"],
+  "allowed": {
+    "RepetitionTime": [2.0],
+    "TaskName": ["balloon analog risk task"]
+  }
+}

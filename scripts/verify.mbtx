@@ -399,6 +399,7 @@ async fn main {
   verify_field_summary(env)
   verify_review_csv(env)
   verify_source_changes(env)
+  verify_expectations(env)
   println("Verified core targets and real-data Wasm CLI.")
 }
 
@@ -794,6 +795,145 @@ async fn verify_source_changes(env : Map[String, String]) -> Unit {
     missing.stdout().is_empty() &&
     missing.stderr().contains("io_error") else {
     fail("Source input IO failure emitted partial plan")
+  }
+  clean_review_directory(root)
+}
+
+///|
+async fn verify_expectations(env : Map[String, String]) -> Unit {
+  let rule = "examples/expectations/acquisition.json"
+  let good = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "expect", "examples/ds000001/manifest.json",
+      rule,
+    ],
+    env~,
+  ).output()
+  good.check()
+  guard @json.parse(good.stdout())
+    is {
+      "decision": String("pass"),
+      "violation_count": Number(0.0, ..),
+      "entries": Array(entries),
+      ..
+    } &&
+    entries.length() == 3 &&
+    good.stdout().contains("\"actual\":2.0") else {
+    fail(
+      "Real acquisition expectations did not preserve exact values or all scans",
+    )
+  }
+  let changed = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "expect", "examples/ds000001/changed-manifest.json",
+      rule,
+    ],
+    env~,
+  ).output()
+  guard changed.exit_code() == 1 &&
+    @json.parse(changed.stdout())
+    is {
+      "decision": String("violations"),
+      "violation_count": Number(3.0, ..),
+      "error_count": Number(0.0, ..),
+      ..
+    } &&
+    changed.stdout().contains("\"actual\":3.0") else {
+    fail(
+      "Counterfactual acquisition violations lost evidence or process failure",
+    )
+  }
+  let unknown = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "expect", "examples/ds000001/manifest.json",
+      rule, "absent", "sub-01/func/sub-01_task-balloonanalogrisktask_run-01_bold.nii.gz",
+    ],
+    env~,
+  ).output()
+  guard unknown.exit_code() == 1 &&
+    @json.parse(unknown.stdout())
+    is {
+      "decision": String("indeterminate"),
+      "violation_count": Number(0.0, ..),
+      "error_count": Number(1.0, ..),
+      "entries": Array(
+        [
+          { "status": String("error"), .. },
+          { "status": String("resolved"), .. },
+        ]
+      ),
+      ..
+    } else {
+    fail("Expectation query failure did not recover for next scan")
+  }
+  let ambiguous = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "expect", "examples/release-check/ambiguous-manifest.json",
+      rule,
+    ],
+    env~,
+  ).output()
+  guard ambiguous.exit_code() == 1 &&
+    @json.parse(ambiguous.stdout())
+    is {
+      "decision": String("indeterminate"),
+      "error_count": Number(1.0, ..),
+      ..
+    } else {
+    fail("Ambiguous inheritance falsely passed expectations")
+  }
+  let root = @fs.tmpdir(prefix="bids-trace-review")
+  errdefer clean_review_directory(root)
+  @fs.write_file(root + "/empty.json", "{\"files\":[],\"sidecars\":[]}")
+  let empty = @shell.Cmd(
+    "moon",
+    [
+      "run",
+      "cmd/main",
+      "--target",
+      "wasm",
+      "--deny-warn",
+      "--",
+      "expect",
+      root + "/empty.json",
+      rule,
+    ],
+    env~,
+  ).output()
+  guard empty.exit_code() == 1 &&
+    @json.parse(empty.stdout())
+    is { "decision": String("indeterminate"), "empty_audit": True, .. } else {
+    fail("Empty indexed cohort received vacuous approval")
+  }
+  @fs.write_file(
+    root + "/invalid.json",
+    "{\"required\":[],\"allowed\":{},\"tolerance\":0.1}",
+  )
+  let invalid = @shell.Cmd(
+    "moon",
+    [
+      "run",
+      "cmd/main",
+      "--target",
+      "wasm",
+      "--deny-warn",
+      "--",
+      "expect",
+      "examples/ds000001/manifest.json",
+      root + "/invalid.json",
+    ],
+    env~,
+  ).output()
+  guard invalid.exit_code() == 1 &&
+    invalid.stdout().is_empty() &&
+    invalid.stderr().contains("unknown_expectation_field") else {
+    fail(
+      "Unknown expectation control silently ignored or partial report emitted",
+    )
   }
   clean_review_directory(root)
 }
