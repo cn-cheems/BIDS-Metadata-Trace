@@ -1,0 +1,6 @@
+{
+  "edits": [
+    {"path": "task-balloonanalogrisktask_bold.json", "set": {"RepetitionTime": 3.0}, "remove": []},
+    {"path": "sub-01/func/sub-01_task-balloonanalogrisktask_run-01_bold.json", "set": {}, "remove": ["RepetitionTime"]}
+  ]
+}

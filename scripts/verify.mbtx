@@ -394,5 +394,163 @@ async fn main {
     }
   }
   clean_review_directory(review_dir)
+  verify_batch_workflow(env)
   println("Verified core targets and real-data Wasm CLI.")
+}
+
+///|
+async fn verify_batch_workflow(env : Map[String, String]) -> Unit {
+  let baseline = "examples/ds000001/provenance-manifest.json"
+  let batch = "examples/edit-plan/coordinated-edits.json"
+  let args = [
+    "run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "plan-batch", baseline,
+    batch,
+  ]
+  let output = @shell.Cmd("moon", args, env~).output()
+  output.check()
+  guard @json.parse(output.stdout())
+    is {
+      "sidecars": Array(
+        [
+          { "after_sidecar": Object(local_values), .. },
+          {
+            "after_sidecar": {
+              "RepetitionTime": Number(3.0, ..),
+              "TaskName": String("balloon analog risk task"),
+              ..
+            },
+            ..
+          },
+        ]
+      ),
+      "before_manifest": Object(_),
+      "after_manifest": Object(_),
+      "impact": {
+        "changed_count": Number(3.0, ..),
+        "error_count": Number(0.0, ..),
+        ..
+      },
+      ..
+    } &&
+    local_values.length() == 0 else {
+    fail(
+      "Coordinated edit must retain full evidence and expose the new root value for all three real scan paths.",
+    )
+  }
+  let root = @fs.tmpdir(prefix="bids-trace-review")
+  errdefer clean_review_directory(root)
+  let candidate_path = root + "/candidate.json"
+  let export_args = args.copy()
+  export_args.push("--manifest-only")
+  let exported = @shell.Cmd("moon", export_args, env~).output()
+  exported.check()
+  @fs.write_file(candidate_path, exported.stdout())
+  let path = "sub-01/func/sub-01_task-balloonanalogrisktask_run-01_bold.nii.gz"
+  let resolved = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "resolve", candidate_path,
+      path,
+    ],
+    env~,
+  ).output()
+  resolved.check()
+  guard @json.parse(resolved.stdout())
+    is {
+      "metadata": { "RepetitionTime": Number(3.0, ..), .. },
+      "fields": {
+        "RepetitionTime": Array(
+          [{ "path": String("task-balloonanalogrisktask_bold.json"), .. }]
+        ),
+        ..
+      },
+      ..
+    } else {
+    fail(
+      "Exported batch candidate must resolve the removed local override from its edited root.",
+    )
+  }
+  let captured = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "bundle", baseline,
+      candidate_path,
+    ],
+    env~,
+  ).output()
+  captured.check()
+  let bundle_path = root + "/bundle.json"
+  @fs.write_file(bundle_path, captured.stdout())
+  let replayed = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "replay", bundle_path,
+    ],
+    env~,
+  ).output()
+  replayed.check()
+  guard @json.parse(replayed.stdout())
+    is {
+      "decision": String("changes_detected"),
+      "affected_paths": Array(affected),
+      ..
+    } &&
+    affected.length() == 3 else {
+    fail("Batch candidates must feed the existing offline review workflow.")
+  }
+  let bad_batch = root + "/bad.json"
+  @fs.write_file(
+    bad_batch, "{\"edits\":[{\"path\":\"task-balloonanalogrisktask_bold.json\",\"set\":{\"RepetitionTime\":4.0},\"remove\":[\"absent\"]}]}",
+  )
+  let rejected = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "plan-batch", baseline,
+      bad_batch,
+    ],
+    env~,
+  ).output()
+  guard rejected.exit_code() == 1 &&
+    rejected.stdout().is_empty() &&
+    @json.parse(rejected.stderr())
+    is { "code": String("missing_metadata_field"), .. } else {
+    fail("An invalid batch must never emit a partial plan.")
+  }
+  let missing = root + "/missing.json"
+  let missing_result = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "plan-batch", baseline,
+      missing,
+    ],
+    env~,
+  ).output()
+  guard missing_result.exit_code() == 1 &&
+    missing_result.stdout().is_empty() &&
+    @json.parse(missing_result.stderr())
+    is { "code": String("io_error"), "path": String(actual), .. } &&
+    actual == missing else {
+    fail("Batch IO failure must identify the actual file.")
+  }
+  @fs.write_file(bad_batch, "{\"edits\":[]}")
+  let indeterminate = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "plan-batch", "examples/release-check/ambiguous-manifest.json",
+      bad_batch,
+    ],
+    env~,
+  ).output()
+  guard indeterminate.exit_code() == 1 &&
+    @json.parse(indeterminate.stdout())
+    is {
+      "after_manifest": Object(_),
+      "impact": { "error_count": Number(1.0, ..), .. },
+      ..
+    } else {
+    fail(
+      "An empty batch must retain existing ambiguity rather than turn it into approval.",
+    )
+  }
+  clean_review_directory(root)
 }

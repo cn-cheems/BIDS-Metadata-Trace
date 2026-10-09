@@ -98,23 +98,11 @@ pub struct EditPlan {
 }
 
 ///|
-/// Plan one existing sidecar edit, then revalidate the complete new snapshot.
-/// Removing an absent field fails. Scan ambiguity stays visible in the impact.
-pub fn DatasetIndex::plan_edit(
-  self : DatasetIndex,
-  sidecar_path : String,
+fn apply_metadata_patch(
+  original : Map[String, Json],
   patch : MetadataPatch,
-) -> EditPlan raise TraceError {
-  guard self.sidecars.search_by(source => source.selector.path == sidecar_path)
-    is Some(position) else {
-    reject(
-      "unknown_sidecar_path", sidecar_path, "Sidecar is absent from the snapshot; select an existing source before planning an edit.",
-    )
-    abort("reject raises")
-  }
-  let original = self.sidecars[position].metadata
-  // Validate all removals before making a private replacement. Neither a failed
-  // plan nor a successful one can mutate the baseline or another plan.
+  sidecar_path : String,
+) -> Map[String, Json] raise TraceError {
   for key in patch.removals {
     if !original.contains(key) {
       reject(
@@ -136,6 +124,28 @@ pub fn DatasetIndex::plan_edit(
   for key in sorted_keys(patch.assignments) {
     updated[key] = copy_json(patch.assignments[key])
   }
+  updated
+}
+
+///|
+/// Plan one existing sidecar edit, then revalidate the complete new snapshot.
+/// Removing an absent field fails. Scan ambiguity stays visible in the impact.
+pub fn DatasetIndex::plan_edit(
+  self : DatasetIndex,
+  sidecar_path : String,
+  patch : MetadataPatch,
+) -> EditPlan raise TraceError {
+  guard self.sidecars.search_by(source => source.selector.path == sidecar_path)
+    is Some(position) else {
+    reject(
+      "unknown_sidecar_path", sidecar_path, "Sidecar is absent from the snapshot; select an existing source before planning an edit.",
+    )
+    abort("reject raises")
+  }
+  let original = self.sidecars[position].metadata
+  // Validate all removals before making a private replacement. Neither a failed
+  // plan nor a successful one can mutate the baseline or another plan.
+  let updated = apply_metadata_patch(original, patch, sidecar_path)
   let inputs = self.sidecars.map(source => {
     let metadata = if source.selector.path == sidecar_path {
       updated

@@ -4,7 +4,7 @@ extern "wasm" fn exit(code : Int) -> Unit = "wasi_snapshot_preview1" "proc_exit"
 
 ///|
 fn usage() -> String {
-  "Usage: bids-metadata-trace discover DATASET_DIR [--manifest-only] | plan MANIFEST.json SIDECAR_PATH PATCH.json [--manifest-only] | bundle BEFORE.json AFTER.json [--effective-only] | replay BUNDLE.json | resolve MANIFEST.json DATA_PATH | audit MANIFEST.json [DATA_PATH ...] | diff BEFORE.json AFTER.json | check BEFORE.json AFTER.json [--effective-only]"
+  "Usage: bids-metadata-trace discover DATASET_DIR [--manifest-only] | plan MANIFEST.json SIDECAR_PATH PATCH.json [--manifest-only] | plan-batch MANIFEST.json BATCH.json [--manifest-only] | bundle BEFORE.json AFTER.json [--effective-only] | replay BUNDLE.json | resolve MANIFEST.json DATA_PATH | audit MANIFEST.json [DATA_PATH ...] | diff BEFORE.json AFTER.json | check BEFORE.json AFTER.json [--effective-only]"
 }
 
 ///|
@@ -100,6 +100,13 @@ async fn main {
     args[1] == "audit" ||
     (args[1] == "replay" && args.length() == 3) ||
     (
+      args[1] == "plan-batch" &&
+      (
+        args.length() == 4 ||
+        (args.length() == 5 && args[4] == "--manifest-only")
+      )
+    ) ||
+    (
       args[1] == "plan" &&
       (
         args.length() == 5 ||
@@ -150,6 +157,18 @@ async fn main {
       println(
         @trace.ReviewBundle::create(index, load_manifest(args[3]), policy).to_json(),
       )
+    } else if args[1] == "plan-batch" {
+      let plan = index.plan_edits(load_edit_batch(args[3]))
+      println(
+        if args.length() == 5 {
+          plan.after().to_manifest_json()
+        } else {
+          plan.to_json()
+        },
+      )
+      if plan.impact().error_count() > 0 {
+        exit(1)
+      }
     } else if args[1] == "plan" {
       let plan = index.plan_edit(args[3], load_patch(args[4]))
       println(

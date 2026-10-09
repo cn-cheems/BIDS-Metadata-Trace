@@ -43,6 +43,7 @@ Import `cn-cheems/bids_metadata_trace` as `@trace` in your `moon.pkg`. This modu
 - `before.compare(after)` reports the sorted union of scan paths, with `ImpactKind`, typed `FieldChangeKind`, full before/after evidence, per-field histories and source-chain changes. `changed_count()` excludes indeterminate scans; always also inspect `error_count()`.
 - `impact.release_check(ReleasePolicy)` produces a reusable release decision, sorted affected/unresolved paths and the complete impact evidence. `AllChanges` includes provenance; `EffectiveValues` checks exact values and scan inventory. `Indeterminate` always takes priority over detected changes.
 - `index.plan_edit(sidecar_path, MetadataPatch::from_json(text))` proposes an edit to one existing source, retaining complete before/after snapshots and impact evidence. `plan.updated_sidecar_json()` includes untouched metadata; `plan.after()` is a reusable candidate index.
+- `EditBatch::from_patches([(path, patch), ...])` builds coordinated edits for MoonBit callers; `from_json(text)` reads the batch format below. `index.plan_edits(batch)` validates every edit against the same baseline and returns one `BatchEditPlan`, complete source replacements and final scan impacts.
 - `ReviewBundle::create(before, after, policy)` captures complete snapshots and the complete release check. `ReviewBundle::from_json(text)` recomputes and verifies all expected evidence; `bundle.report()` exposes the verified decision.
 
 See the compiler-generated [public interface](pkg.generated.mbti) and [executable library examples](USAGE.mbt.md).
@@ -79,7 +80,7 @@ Tests cover inheritance, source histories, ambiguity, scope errors, numeric pres
 
 ## Roadmap
 
-Implemented: inheritance/provenance, recoverable batch audit, snapshot impact comparison, policy-based release checks, directory discovery with an explicit inventory report, metadata edit planning and replayable review bundles. Next: additional raw-data profiles backed by specification and fixtures, then explicit multi-source edit workflows. Planned capabilities require separate implementation. Full BIDS validation is not implemented.
+Implemented: inheritance/provenance, recoverable batch audit, snapshot impact comparison, policy-based release checks, directory discovery with an explicit inventory report, single-source/coordinated multi-source edit planning and replayable review bundles. Next: additional raw-data profiles backed by specification and fixtures. Planned capabilities require separate implementation. Full BIDS validation is not implemented.
 
 ## Batch review example
 
@@ -159,6 +160,32 @@ The authored patch is `{"set":{"RepetitionTime":3.0},"remove":[]}`. It proposes 
 Both patch controls are required. `set` replaces whole top-level field values, including explicit `null`; `remove` deletes only explicitly named fields from the selected existing sidecar. A removed local override can expose an inherited parent value. Other fields, nested unknown values and numeric tokens are preserved. Unknown controls, repeated removal names, set/remove conflicts, absent removal fields, unknown sidecar paths and depth/size violations fail before producing a plan; the baseline remains usable. Creating/removing sidecars and recursive JSON patch operations are outside this capability.
 
 Exit 0 means the plan has determinate scan impacts, including expected changes. An indeterminate impact produces the completed plan on stdout and exit 1; input/IO errors produce only a diagnostic on stderr. Inspect impact diagnostics before using a candidate. The exported manifest has the existing reloadable snapshot bound; complete plan reports repeat provenance evidence and can be larger.
+
+## Preview coordinated sidecar edits
+
+A curator changing a root parameter may also need to remove a stale run-specific override. Batch planning accepts all operations together and produces one final candidate:
+
+```sh
+moon run cmd/main --target wasm -- plan-batch examples/ds000001/provenance-manifest.json examples/edit-plan/coordinated-edits.json
+moon run cmd/main --target wasm -- plan-batch examples/ds000001/provenance-manifest.json examples/edit-plan/coordinated-edits.json --manifest-only > candidate.json
+moon run cmd/main --target wasm -- bundle examples/ds000001/provenance-manifest.json candidate.json > review.json
+moon run cmd/main --target wasm -- replay review.json
+```
+
+The baseline combines real CC0 paths/metadata with the previously documented synthetic run-01 override. The authored batch sets root `RepetitionTime` to `3.0` and removes that field from run 01, leaving its empty sidecar in place. All three scans inherit the new root value; `TaskName` remains intact. This is a counterfactual review, not corrected acquisition data.
+
+```json
+{"edits":[
+  {"path":"task-rest_bold.json","set":{"RepetitionTime":3.0},"remove":[]},
+  {"path":"sub-01/func/sub-01_task-rest_run-01_bold.json","set":{},"remove":["RepetitionTime"]}
+]}
+```
+
+Every entry requires `path`, `set` and `remove`; only `edits` is allowed at the envelope. The whole-field semantics are identical to single-source planning. Duplicate sidecar paths, duplicate decoded keys, unknown controls, invalid operations, unknown sources and absent removal fields are errors. No operation is silently skipped. All removals refer to the baseline, repeated edits to one source are rejected, and input order cannot change a valid plan. Empty batches preserve the baseline and any existing resolution errors.
+
+The library/CLI never write source files. “All or nothing” means immutable snapshot planning, not a disk transaction. The final combined snapshot is rebuilt and bounded once, allowing a coordinated shrink/grow that would exceed the limit in an intermediate single edit. A failure returns no partial plan; an indeterminate final impact retains the complete plan with CLI exit 1. A determinate plan exits 0 even when changes exist. Default output contains the normalized batch, every edited source's old/new values, both full snapshots and one impact report. `--manifest-only` exports the final candidate for existing resolve/check/bundle workflows. `updated_sidecar_json(path)` returns `None` for sources not explicitly edited.
+
+Limits: 256 distinct existing sidecars, 2,097,152 UTF-16 units per parsed/canonical batch, 67 batch containers accommodating metadata64, and the existing per-sidecar/final-snapshot limits. CLI batch files also have an 8 MiB disk bound. Sidecar creation/deletion, nested patch operations, sequential same-source operations and disk application remain unsupported. Complete reports may exceed snapshot size because they retain repeated evidence.
 
 ## Share and replay an offline review
 

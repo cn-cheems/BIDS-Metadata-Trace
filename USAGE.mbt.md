@@ -1,5 +1,44 @@
 # Executable library usage
 
+Build a coordinated plan directly from typed MoonBit patches.
+
+```mbt check
+///|
+test "typed coordinated edits expose the edited root without rewriting the baseline" {
+  let path = "sub-01/func/sub-01_task-rest_bold.nii"
+  let source = "sub-01/func/sub-01_task-rest_bold.json"
+  let before = @trace.DatasetIndex::from_manifest([path], [
+    @trace.SidecarInput::new("task-rest_bold.json", "{\"RepetitionTime\":2.0}"),
+    @trace.SidecarInput::new(source, "{\"RepetitionTime\":4.0,\"Custom\":null}"),
+  ])
+  let root_patch = @trace.MetadataPatch::from_json(
+    "{\"set\":{\"RepetitionTime\":3.0},\"remove\":[]}",
+  )
+  let local_patch = @trace.MetadataPatch::from_json(
+    "{\"set\":{},\"remove\":[\"RepetitionTime\"]}",
+  )
+  let batch = @trace.EditBatch::from_patches([
+    ("task-rest_bold.json", root_patch),
+    (source, local_patch),
+  ])
+  let plan = before.plan_edits(batch)
+  assert_eq(
+    plan.after().resolve(path).to_json(),
+    "{\"Custom\":null,\"RepetitionTime\":3.0}",
+  )
+  assert_eq(
+    before.resolve(path).to_json(),
+    "{\"Custom\":null,\"RepetitionTime\":4.0}",
+  )
+  assert_eq(plan.updated_sidecar_json(source), Some("{\"Custom\":null}"))
+  assert_eq(plan.impact().changed_count(), 1)
+  assert_eq(
+    @trace.EditBatch::from_json(batch.to_json()).to_json(),
+    batch.to_json(),
+  )
+}
+```
+
 Review bundles carry every input needed to reproduce a release decision.
 
 ```mbt check

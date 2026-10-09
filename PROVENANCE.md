@@ -25,7 +25,13 @@ Edit-plan patches and tests are authored Apache-2.0 resources. The sample repeti
 
 The review-bundle format, implementation and replay tests are authored Apache-2.0 resources. They use this project's existing manifests, canonical JSON and release semantics. No external signing, archival or provenance standard is implemented; the bundle makes no authenticity claim.
 
-## Related work checked on 2026-10-08
+Coordinated edit fixtures, tests and batch semantics are authored Apache-2.0 resources. The example combines the existing CC0 scan-path subset and synthetic override with an explicitly synthetic root assignment/local removal. It does not modify or reinterpret the original acquisition.
+
+## Related work
+
+Follow-up boundary review on 2026-10-09 searched `MoonBit BIDS metadata edit batch GitHub Mooncakes`. [moonbit-notary 0.1.0](https://mooncakes.io/docs/hcjbat/moonbit-notary) (Apache-2.0) documents evidence manifests, fingerprints and policy assessment (`ManifestBuilder`, `EvidenceBatch::from_manifest`, `assess_batch`); the checked public description does not cover MRI sidecar applicability or inherited-field edit planning. The contribution here is coordinated BIDS-source editing with final scan provenance, rather than a general evidence or hashing toolkit. This bounded review cannot establish absence of private/unindexed overlapping projects. No notary implementation, tests or format are reused.
+
+The following projects were checked on 2026-10-08:
 
 - [MoonNIfTI](https://github.com/wangjiale6036-dotcom/moonnifti), MIT: voxel access and coordinate-preserving transformations.
 - [MoonDICOM](https://github.com/CCllff-jpg/MoonDICOM-MoonBit-), Apache-2.0: DICOM metadata parsing, validation and anonymization.

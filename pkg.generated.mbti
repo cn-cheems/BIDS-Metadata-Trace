@@ -29,6 +29,16 @@ pub fn AuditReport::entries(Self) -> Array[AuditEntry]
 pub fn AuditReport::error_count(Self) -> Int
 pub fn AuditReport::to_json(Self) -> String
 
+pub struct BatchEditPlan {
+  // private fields
+}
+pub fn BatchEditPlan::after(Self) -> DatasetIndex
+pub fn BatchEditPlan::before(Self) -> DatasetIndex
+pub fn BatchEditPlan::impact(Self) -> ImpactReport
+pub fn BatchEditPlan::sidecar_paths(Self) -> Array[String]
+pub fn BatchEditPlan::to_json(Self) -> String
+pub fn BatchEditPlan::updated_sidecar_json(Self, String) -> String?
+
 pub struct DatasetIndex {
   // private fields
 }
@@ -39,6 +49,7 @@ pub fn DatasetIndex::data_paths(Self) -> Array[String]
 pub fn DatasetIndex::from_json(String) -> Self raise TraceError
 pub fn DatasetIndex::from_manifest(Array[String], Array[SidecarInput]) -> Self raise TraceError
 pub fn DatasetIndex::plan_edit(Self, String, MetadataPatch) -> EditPlan raise TraceError
+pub fn DatasetIndex::plan_edits(Self, EditBatch) -> BatchEditPlan raise TraceError
 pub fn DatasetIndex::resolve(Self, String) -> ResolvedMetadata raise TraceError
 pub fn DatasetIndex::to_manifest_json(Self) -> String
 
@@ -73,6 +84,14 @@ pub(all) enum DiscoveryRole {
 } derive(Eq)
 pub fn DiscoveryRole::equal(Self, Self) -> Bool
 pub fn DiscoveryRole::not_equal(Self, Self) -> Bool
+
+pub struct EditBatch {
+  // private fields
+}
+pub fn EditBatch::from_json(String) -> Self raise TraceError
+pub fn EditBatch::from_patches(Array[(String, MetadataPatch)]) -> Self raise TraceError
+pub fn EditBatch::sidecar_paths(Self) -> Array[String]
+pub fn EditBatch::to_json(Self) -> String
 
 pub struct EditPlan {
   // private fields
