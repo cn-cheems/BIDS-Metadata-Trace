@@ -42,6 +42,7 @@ Import `cn-cheems/bids_metadata_trace` as `@trace` in your `moon.pkg`. This modu
 - `index.audit(paths)` retains every query occurrence in request order, including duplicates. `audit_all()` uses sorted indexed paths. `report.entries()` returns success or diagnostic per query; `error_count()` and `to_json()` support release checks.
 - `before.compare(after)` reports the sorted union of scan paths, with `ImpactKind`, typed `FieldChangeKind`, full before/after evidence, per-field histories and source-chain changes. `changed_count()` excludes indeterminate scans; always also inspect `error_count()`.
 - `impact.release_check(ReleasePolicy)` produces a reusable release decision, sorted affected/unresolved paths and the complete impact evidence. `AllChanges` includes provenance; `EffectiveValues` checks exact values and scan inventory. `Indeterminate` always takes priority over detected changes.
+- `index.plan_edit(sidecar_path, MetadataPatch::from_json(text))` proposes an edit to one existing source, retaining complete before/after snapshots and impact evidence. `plan.updated_sidecar_json()` includes untouched metadata; `plan.after()` is a reusable candidate index.
 
 See the compiler-generated [public interface](pkg.generated.mbti) and [executable library examples](USAGE.mbt.md).
 
@@ -76,7 +77,7 @@ Tests cover inheritance, source histories, ambiguity, scope errors, numeric pres
 
 ## Roadmap
 
-Implemented: inheritance/provenance, recoverable batch audit, snapshot impact comparison, policy-based release checks and directory discovery with an explicit inventory report. Next: metadata edit planning and replayable review bundles, then additional raw-data profiles backed by specification and fixtures. Planned capabilities require separate implementation. Full BIDS validation is not implemented.
+Implemented: inheritance/provenance, recoverable batch audit, snapshot impact comparison, policy-based release checks, directory discovery with an explicit inventory report and metadata edit planning. Next: replayable review bundles, then additional raw-data profiles backed by specification and fixtures. Planned capabilities require separate implementation. Full BIDS validation is not implemented.
 
 ## Batch review example
 
@@ -142,6 +143,20 @@ Default output includes a reusable `manifest`, `auxiliary_paths` and `excluded_p
 Discovery reads regular JSON sidecars and records `.nii`/`.nii.gz` paths without opening image bytes. It walks regular directories, includes hidden entries in its inventory and refuses symlinks/junctions and special files. It prunes and reports hidden paths and the top-level `derivatives`, `sourcedata`, `code`, `stimuli` trees. It records auxiliary TSV/TSV.GZ/BVAL/BVEC files, events/scans/sessions/participants JSON, and the documented root README/LICENSE/CHANGES and dataset_description/participants resources. Their contents do not contribute MRI metadata and are not exported in the manifest. Other files, unsupported MRI suffixes/entities, malformed JSON and read failures reject the entire discovery. `.bidsignore` is reported as a hidden exclusion and is **not interpreted**.
 
 Limits: 20,000 visited entries, 32 directory levels, the existing snapshot/JSON limits, and 8 MiB on disk per sidecar. Run against a quiescent directory: discovery is not an atomic filesystem transaction. `complete_supported_inventory` covers the selected raw-MRI profile and recorded exclusions, not the entire BIDS ecosystem. The included tree uses real CC0 metadata and path names; image entries are explicit text placeholders for a metadata-only demonstration. It does not claim image validity.
+
+## Preview a sidecar edit
+
+```sh
+moon run cmd/main --target wasm -- plan examples/ds000001/manifest.json task-balloonanalogrisktask_bold.json examples/edit-plan/change-repetition-time.json
+moon run cmd/main --target wasm -- plan examples/ds000001/manifest.json task-balloonanalogrisktask_bold.json examples/edit-plan/change-repetition-time.json --manifest-only > candidate.json
+moon run cmd/main --target wasm -- check examples/ds000001/manifest.json candidate.json
+```
+
+The authored patch is `{"set":{"RepetitionTime":3.0},"remove":[]}`. It proposes a synthetic change to the real fixture's root source, preserves `TaskName`, and reports all three affected scans. The default plan output contains the patch, full old/new sidecar metadata, both complete manifests and the full impact report. `--manifest-only` exports the candidate snapshot for subsequent audit/check workflows. Planning never writes source files or approves an edit.
+
+Both patch controls are required. `set` replaces whole top-level field values, including explicit `null`; `remove` deletes only explicitly named fields from the selected existing sidecar. A removed local override can expose an inherited parent value. Other fields, nested unknown values and numeric tokens are preserved. Unknown controls, repeated removal names, set/remove conflicts, absent removal fields, unknown sidecar paths and depth/size violations fail before producing a plan; the baseline remains usable. Creating/removing sidecars and recursive JSON patch operations are outside this capability.
+
+Exit 0 means the plan has determinate scan impacts, including expected changes. An indeterminate impact produces the completed plan on stdout and exit 1; input/IO errors produce only a diagnostic on stderr. Inspect impact diagnostics before using a candidate. The exported manifest has the existing reloadable snapshot bound; complete plan reports repeat provenance evidence and can be larger.
 
 ## Sources and license
 

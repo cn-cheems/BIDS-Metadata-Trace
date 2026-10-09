@@ -4,7 +4,33 @@ extern "wasm" fn exit(code : Int) -> Unit = "wasi_snapshot_preview1" "proc_exit"
 
 ///|
 fn usage() -> String {
-  "Usage: bids-metadata-trace discover DATASET_DIR [--manifest-only] | resolve MANIFEST.json DATA_PATH | audit MANIFEST.json [DATA_PATH ...] | diff BEFORE.json AFTER.json | check BEFORE.json AFTER.json [--effective-only]"
+  "Usage: bids-metadata-trace discover DATASET_DIR [--manifest-only] | plan MANIFEST.json SIDECAR_PATH PATCH.json [--manifest-only] | resolve MANIFEST.json DATA_PATH | audit MANIFEST.json [DATA_PATH ...] | diff BEFORE.json AFTER.json | check BEFORE.json AFTER.json [--effective-only]"
+}
+
+///|
+async fn load_patch(path : String) -> @trace.MetadataPatch {
+  try {
+    if @fs.file_size(path) > 8388608L {
+      raise @trace.TraceError({
+        code: "input_limit",
+        path,
+        message: "Patch exceeds 8 MiB on disk; reduce the proposed edit.",
+        offset: None,
+        related: [],
+      })
+    }
+    @trace.MetadataPatch::from_json(@fs.read_file(path).text())
+  } catch {
+    @trace.TraceError(diagnostic) => raise @trace.TraceError(diagnostic)
+    error =>
+      raise @trace.TraceError({
+        code: "io_error",
+        path,
+        message: error.to_string(),
+        offset: None,
+        related: [],
+      })
+  }
 }
 
 ///|
@@ -47,6 +73,13 @@ async fn main {
     !(((args[1] == "resolve" || args[1] == "diff") && args.length() == 4) ||
     args[1] == "audit" ||
     (
+      args[1] == "plan" &&
+      (
+        args.length() == 5 ||
+        (args.length() == 6 && args[5] == "--manifest-only")
+      )
+    ) ||
+    (
       args[1] == "discover" &&
       (
         args.length() == 3 ||
@@ -77,7 +110,19 @@ async fn main {
       return
     }
     let index = load_manifest(args[2])
-    if args[1] == "check" {
+    if args[1] == "plan" {
+      let plan = index.plan_edit(args[3], load_patch(args[4]))
+      println(
+        if args.length() == 6 {
+          plan.after().to_manifest_json()
+        } else {
+          plan.to_json()
+        },
+      )
+      if plan.impact().error_count() > 0 {
+        exit(1)
+      }
+    } else if args[1] == "check" {
       let policy = if args.length() == 5 {
         @trace.ReleasePolicy::EffectiveValues
       } else {

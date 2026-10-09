@@ -92,5 +92,24 @@ async fn main {
   let exported = @shell.Cmd("moon", ["run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "discover", "examples/ds000001/tree", "--manifest-only"], env~).output()
   exported.check()
   guard @json.parse(exported.stdout()) is {"files": Array(exported_paths), "sidecars": Array([_]), ..} && exported_paths.length() == 3 && exported.stdout().contains("2.0") else { fail("The discovered manifest must preserve numeric tokens.") }
+  let plan_args = ["run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "plan", fixture, "task-balloonanalogrisktask_bold.json", "examples/edit-plan/change-repetition-time.json"]
+  let planned = @shell.Cmd("moon", plan_args, env~).output()
+  planned.check()
+  guard @json.parse(planned.stdout()) is {
+    "before_sidecar": {"RepetitionTime": Number(2.0, ..), ..},
+    "after_sidecar": {"RepetitionTime": Number(3.0, ..), "TaskName": String("balloon analog risk task"), ..},
+    "before_manifest": Object(_), "after_manifest": Object(_),
+    "impact": {"changed_count": Number(3.0, ..), "error_count": Number(0.0, ..), ..}, ..
+  } else { fail("Edit planning must retain both snapshots, untouched TaskName and three affected scans.") }
+  let plan_export_args = plan_args.copy()
+  plan_export_args.push("--manifest-only")
+  let candidate = @shell.Cmd("moon", plan_export_args, env~).output()
+  candidate.check()
+  guard @json.parse(candidate.stdout()) is {"files": Array(candidate_paths), "sidecars": Array([{"metadata": {"RepetitionTime": Number(3.0, ..), ..}, ..}]), ..} && candidate_paths.length() == 3 && candidate.stdout().contains("3.0") else { fail("The planned snapshot must remain reloadable with exact number tokens.") }
+  let missing_patch = "examples/edit-plan/does-not-exist.json"
+  let failed_plan = @shell.Cmd("moon", ["run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "plan", fixture, "task-balloonanalogrisktask_bold.json", missing_patch], env~).output()
+  guard failed_plan.exit_code() == 1 && failed_plan.stdout().is_empty() && @json.parse(failed_plan.stderr()) is {"code": String("io_error"), "path": String(actual_patch), ..} && actual_patch == missing_patch else { fail("Patch IO failures must identify the actual patch file.") }
+  let unresolved_plan = @shell.Cmd("moon", ["run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "plan", ambiguous, "bold.json", "examples/edit-plan/change-repetition-time.json"], env~).output()
+  guard unresolved_plan.exit_code() == 1 && @json.parse(unresolved_plan.stdout()) is {"after_manifest": Object(_), "impact": {"error_count": Number(1.0, ..), "entries": Array([{"kind": String("unresolved"), ..}]), ..}, ..} else { fail("An indeterminate plan must retain the complete candidate and impact, and fail the process.") }
   println("Verified core targets and real-data Wasm CLI.")
 }

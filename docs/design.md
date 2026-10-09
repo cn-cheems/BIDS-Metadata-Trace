@@ -18,6 +18,8 @@ Directory discovery completes the input workflow. An inventory classifier record
 
 ## Safety of interpretation
 
+Edit planning completes the curator's proposed-change workflow: strict whole-field assignments/removals target one existing sidecar, then the complete candidate snapshot is revalidated and compared against the immutable baseline. The plan retains both source values, all snapshot inputs and per-scan evidence. It neither writes files nor treats an indeterminate impact as approval. Sidecar creation/deletion and recursive patch semantics remain outside the public boundary.
+
 The raw MRI profile is versioned by documented scope rather than a claim of complete BIDS conformance. Unknown metadata values are preserved; unsupported selectors and unknown manifest controls fail. No input source is rewritten. Same-level ambiguity is a resolution error, so an index can still be used for unaffected scans. JSON syntax and Unicode validation use MoonBit core; duplicate decoded keys and number lexeme preservation are handled by a bounded additional source walk.
 
 ## Architecture

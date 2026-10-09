@@ -21,6 +21,8 @@ The release-check ambiguity example is an authored Apache-2.0 fixture. The effec
 
 The filesystem fixture materializes the same CC0 metadata/path subset. Image-named entries are marked text placeholders (Apache-2.0) and are not represented as images. Discovery classification/exclusion rules are the project's bounded profile, not the full BIDS inventory specification.
 
+Edit-plan patches and tests are authored Apache-2.0 resources. The sample repetition-time assignment is explicitly synthetic; it is not a corrected scientific observation or an external acquisition. The patch contract is a project-specific whole-field operation format, not an implementation of RFC 6902 or RFC 7396.
+
 ## Related work checked on 2026-10-08
 
 - [MoonNIfTI](https://github.com/wangjiale6036-dotcom/moonnifti), MIT: voxel access and coordinate-preserving transformations.

@@ -1,5 +1,35 @@
 # Executable library usage
 
+Plan a local removal and inspect its inherited result without changing the baseline.
+
+```mbt check
+///|
+test "removing an override exposes its parent without mutating the baseline" {
+  let path = "sub-01/func/sub-01_task-rest_bold.nii"
+  let local_path = "sub-01/func/sub-01_task-rest_bold.json"
+  let index = @trace.DatasetIndex::from_manifest([path], [
+    @trace.SidecarInput::new("task-rest_bold.json", "{\"RepetitionTime\":2.0}"),
+    @trace.SidecarInput::new(
+      local_path, "{\"RepetitionTime\":3.0,\"Custom\":null}",
+    ),
+  ])
+  let patch = @trace.MetadataPatch::from_json(
+    "{\"set\":{},\"remove\":[\"RepetitionTime\"]}",
+  )
+  let plan = index.plan_edit(local_path, patch)
+  assert_eq(plan.updated_sidecar_json(), "{\"Custom\":null}")
+  assert_eq(
+    plan.after().resolve(path).to_json(),
+    "{\"Custom\":null,\"RepetitionTime\":2.0}",
+  )
+  assert_eq(
+    index.resolve(path).to_json(),
+    "{\"Custom\":null,\"RepetitionTime\":3.0}",
+  )
+  assert_eq(plan.impact().changed_count(), 1)
+}
+```
+
 ```mbt check
 ///|
 test "a lower sidecar overrides one field without deleting another" {

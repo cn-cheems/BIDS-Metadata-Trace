@@ -38,6 +38,7 @@ pub fn DatasetIndex::compare(Self, Self) -> ImpactReport
 pub fn DatasetIndex::data_paths(Self) -> Array[String]
 pub fn DatasetIndex::from_json(String) -> Self raise TraceError
 pub fn DatasetIndex::from_manifest(Array[String], Array[SidecarInput]) -> Self raise TraceError
+pub fn DatasetIndex::plan_edit(Self, String, MetadataPatch) -> EditPlan raise TraceError
 pub fn DatasetIndex::resolve(Self, String) -> ResolvedMetadata raise TraceError
 pub fn DatasetIndex::to_manifest_json(Self) -> String
 
@@ -72,6 +73,16 @@ pub(all) enum DiscoveryRole {
 } derive(Eq)
 pub fn DiscoveryRole::equal(Self, Self) -> Bool
 pub fn DiscoveryRole::not_equal(Self, Self) -> Bool
+
+pub struct EditPlan {
+  // private fields
+}
+pub fn EditPlan::after(Self) -> DatasetIndex
+pub fn EditPlan::before(Self) -> DatasetIndex
+pub fn EditPlan::impact(Self) -> ImpactReport
+pub fn EditPlan::sidecar_path(Self) -> String
+pub fn EditPlan::to_json(Self) -> String
+pub fn EditPlan::updated_sidecar_json(Self) -> String
 
 pub struct FieldChange {
   // private fields
@@ -126,6 +137,12 @@ pub fn ImpactReport::entries(Self) -> Array[ImpactEntry]
 pub fn ImpactReport::error_count(Self) -> Int
 pub fn ImpactReport::release_check(Self, ReleasePolicy) -> ReleaseCheck
 pub fn ImpactReport::to_json(Self) -> String
+
+pub struct MetadataPatch {
+  // private fields
+}
+pub fn MetadataPatch::from_json(String) -> Self raise TraceError
+pub fn MetadataPatch::to_json(Self) -> String
 
 pub struct ReleaseCheck {
   // private fields
