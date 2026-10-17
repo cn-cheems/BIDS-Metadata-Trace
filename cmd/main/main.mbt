@@ -4,7 +4,7 @@ extern "wasm" fn exit(code : Int32) -> Unit = "wasi_snapshot_preview1" "proc_exi
 
 ///|
 fn usage() -> String {
-  "Usage: bids-metadata-trace discover DATASET_DIR [--manifest-only] | select MANIFEST.json QUERY.json [--audit] | filter MANIFEST.json METADATA_QUERY.json [DATA_PATH ...] | acquisition MANIFEST.json RULES.json | sources MANIFEST.json | summarize MANIFEST.json FIELD... | table MANIFEST.json FIELD... | expect MANIFEST.json EXPECTATIONS.json [DATA_PATH ...] | plan MANIFEST.json SIDECAR_PATH PATCH.json [--manifest-only] | plan-batch MANIFEST.json BATCH.json [--manifest-only] | plan-sources MANIFEST.json CHANGES.json [--manifest-only] | plan-scans MANIFEST.json SCAN_CHANGES.json [--manifest-only] | bundle BEFORE.json AFTER.json [--effective-only] | replay BUNDLE.json | resolve MANIFEST.json DATA_PATH | audit MANIFEST.json [DATA_PATH ...] | diff BEFORE.json AFTER.json | check BEFORE.json AFTER.json [--effective-only]"
+  "Usage: bids-metadata-trace discover DATASET_DIR [--manifest-only] | select MANIFEST.json QUERY.json [--audit] | filter MANIFEST.json METADATA_QUERY.json [DATA_PATH ...] | acquisition MANIFEST.json RULES.json | sources MANIFEST.json | summarize MANIFEST.json FIELD... | table MANIFEST.json FIELD... | expect MANIFEST.json EXPECTATIONS.json [DATA_PATH ...] | plan MANIFEST.json SIDECAR_PATH PATCH.json [--manifest-only] | plan-batch MANIFEST.json BATCH.json [--manifest-only] | plan-sources MANIFEST.json CHANGES.json [--manifest-only] | plan-scans MANIFEST.json SCAN_CHANGES.json [--manifest-only] | plan-changes MANIFEST.json CHANGES.json [--manifest-only] | prune MANIFEST.json SIDECAR_PATH FIELD... | consistency MANIFEST.json RULES.json [DATA_PATH ...] | bundle BEFORE.json AFTER.json [--effective-only] | replay BUNDLE.json | resolve MANIFEST.json DATA_PATH | audit MANIFEST.json [DATA_PATH ...] | diff BEFORE.json AFTER.json | check BEFORE.json AFTER.json [--effective-only]"
 }
 
 ///|
@@ -212,7 +212,10 @@ async fn main {
   if args.length() < 3 ||
     !(((args[1] == "resolve" || args[1] == "diff") && args.length() == 4) ||
     args[1] == "audit" ||
-    ((args[1] == "expect" || args[1] == "filter") && args.length() >= 4) ||
+    (
+      (args[1] == "expect" || args[1] == "filter" || args[1] == "consistency") &&
+      args.length() >= 4
+    ) ||
     (args[1] == "acquisition" && args.length() == 4) ||
     (
       args[1] == "select" &&
@@ -276,7 +279,19 @@ async fn main {
       return
     }
     let index = load_manifest(args[2])
-    if args[1] == "acquisition" {
+    if args[1] == "consistency" {
+      let rules = @trace.ConsistencyRules::from_json(read_control(args[3]))
+      let audit = if args.length() == 4 {
+        index.audit_all()
+      } else {
+        index.audit(args[4:].to_owned())
+      }
+      let report = audit.check_consistency(rules)
+      println(report.to_json())
+      if report.decision() != @trace.ExpectationDecision::Pass {
+        exit(1)
+      }
+    } else if args[1] == "acquisition" {
       let rules = @trace.AcquisitionRules::from_json(read_control(args[3]))
       let report = index.check_acquisition(rules)
       println(report.to_json())

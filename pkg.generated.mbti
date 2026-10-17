@@ -42,6 +42,7 @@ pub fn AuditEntry::result(Self) -> ResolvedMetadata?
 pub struct AuditReport {
   // private fields
 }
+pub fn AuditReport::check_consistency(Self, ConsistencyRules) -> ConsistencyReport
 pub fn AuditReport::check_expectations(Self, MetadataExpectations) -> ExpectationReport
 pub fn AuditReport::entries(Self) -> Array[AuditEntry]
 pub fn AuditReport::error_count(Self) -> Int
@@ -59,6 +60,20 @@ pub fn BatchEditPlan::impact(Self) -> ImpactReport
 pub fn BatchEditPlan::sidecar_paths(Self) -> Array[String]
 pub fn BatchEditPlan::to_json(Self) -> String
 pub fn BatchEditPlan::updated_sidecar_json(Self, String) -> String?
+
+pub struct ConsistencyReport {
+  // private fields
+}
+pub fn ConsistencyReport::decision(Self) -> ExpectationDecision
+pub fn ConsistencyReport::to_json(Self) -> String
+pub fn ConsistencyReport::violation_count(Self) -> Int
+
+pub struct ConsistencyRules {
+  // private fields
+}
+pub fn ConsistencyRules::from_json(String) -> Self raise TraceError
+pub fn ConsistencyRules::new(Array[String], Array[String], Bool) -> Self raise TraceError
+pub fn ConsistencyRules::to_json(Self) -> String
 
 pub struct DatasetChangePlan {
   // private fields

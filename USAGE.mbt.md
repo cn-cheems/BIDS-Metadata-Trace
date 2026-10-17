@@ -299,6 +299,25 @@ test "combined transaction is exportable and leaves its baseline intact" {
 }
 ```
 
+## Check acquisition consistency within a subject
+
+```mbt check
+///|
+test "uniform inherited acquisition values pass a grouped check" {
+  let path = "sub-01/func/sub-01_task-rest_bold.nii"
+  let index = @trace.DatasetIndex::from_manifest([path], [
+    @trace.SidecarInput::new("bold.json", "{\"RepetitionTime\":2.0}"),
+  ])
+  let rules = @trace.ConsistencyRules::from_json(
+    "{\"group_by\":[\"sub\"],\"fields\":[\"RepetitionTime\"],\"require_present\":true}",
+  )
+  assert_true(
+    index.audit_all().check_consistency(rules).decision() ==
+    @trace.ExpectationDecision::Pass,
+  )
+}
+```
+
 ## Remove a redundant override with a complete proof
 
 ```mbt check

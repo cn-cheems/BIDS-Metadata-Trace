@@ -34,6 +34,63 @@ async fn main {
     }
   }
   let path = "sub-01/func/sub-01_task-balloonanalogrisktask_run-01_bold.nii.gz"
+  for
+    manifest in [
+      "manifest.json", "provenance-manifest.json", "changed-manifest.json",
+    ] {
+    let consistent = @shell.Cmd(
+      "moon",
+      [
+        "run",
+        "cmd/main",
+        "--",
+        "consistency",
+        "examples/ds000001/" + manifest,
+        "examples/ds000001/consistency-rules.json",
+      ],
+      env~,
+    ).output()
+    consistent.check()
+    guard @json.parse(consistent.stdout())
+      is { "decision": String("pass"), "violation_count": Number(0.0, ..), .. } else {
+      fail(
+        "Uniform exact RT values should pass independently of provenance or their correctness.",
+      )
+    }
+  }
+  let consistency_dir = @fs.tmpdir(prefix="bids-trace-review")
+  errdefer clean_review_directory(consistency_dir)
+  let candidate = consistency_dir + "/candidate.json"
+  let mixed = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--", "plan-changes", "examples/ds000001/manifest.json",
+      "examples/ds000001/consistency-changes.json", "--manifest-only",
+    ],
+    env~,
+  ).output()
+  mixed.check()
+  @fs.write_file(candidate, mixed.stdout())
+  let inconsistent = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--", "consistency", candidate, "examples/ds000001/consistency-rules.json",
+    ],
+    env~,
+  ).output()
+  guard inconsistent.exit_code() == 1 &&
+    @json.parse(inconsistent.stdout())
+    is {
+      "decision": String("violations"),
+      "violation_count": Number(1.0, ..),
+      "audit": { "error_count": Number(0.0, ..), .. },
+      ..
+    } else {
+    fail(
+      "One synthetic run-specific RT change must yield one group-field violation.",
+    )
+  }
+  clean_review_directory(consistency_dir)
   let pruning = @shell.Cmd(
     "moon",
     [
