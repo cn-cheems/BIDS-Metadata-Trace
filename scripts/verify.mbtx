@@ -402,6 +402,7 @@ async fn main {
   verify_expectations(env)
   verify_scan_selection(env)
   verify_metadata_filter(env)
+  verify_scan_changes(env)
   println("Verified core targets and real-data Wasm CLI.")
 }
 
@@ -629,6 +630,90 @@ async fn verify_metadata_filter(env : Map[String, String]) -> Unit {
     missing.stderr().contains("io_error") &&
     missing.stderr().contains("missing.json") else {
     fail("Metadata query IO error lost its actionable path")
+  }
+  clean_review_directory(root)
+}
+
+///|
+async fn verify_scan_changes(env : Map[String, String]) -> Unit {
+  let command = [
+    "run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "plan-scans",
+  ]
+  let fixture = "examples/ds000001/manifest.json"
+  let changes = "examples/edit-plan/scan-inventory.json"
+  let output = @shell.Cmd("moon", command + [fixture, changes], env~).output()
+  output.check()
+  guard @json.parse(output.stdout())
+    is {
+      "before_manifest": { "files": Array(before), .. },
+      "after_manifest": {
+        "files": Array(after),
+        "sidecars": Array(sources),
+        ..
+      },
+      "impact": {
+        "changed_count": Number(1.0, ..),
+        "error_count": Number(0.0, ..),
+        ..
+      },
+      "after_coverage": { "scan_count": Number(2.0, ..), .. },
+      ..
+    } &&
+    before.length() == 3 &&
+    after.length() == 2 &&
+    sources.length() == 1 &&
+    output.stdout().contains("\"RepetitionTime\":2.0") else {
+    fail("Scan inventory plan lost real-data evidence or retained sources")
+  }
+  let root = @fs.tmpdir(prefix="bids-trace-review")
+  errdefer clean_review_directory(root)
+  let candidate = root + "/candidate.json"
+  let exported = @shell.Cmd(
+    "moon",
+    command + [fixture, changes, "--manifest-only"],
+    env~,
+  ).output()
+  exported.check()
+  @fs.write_file(candidate, exported.stdout())
+  let check = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "check", fixture,
+      candidate, "--effective-only",
+    ],
+    env~,
+  ).output()
+  guard check.exit_code() == 1 && check.stdout().contains("changes_detected") else {
+    fail("Inventory removal bypassed release checks")
+  }
+  let controls = root + "/controls.json"
+  @fs.write_file(controls, "{\"add\":[],\"remove\":[],\"unknown\":true}")
+  let invalid = @shell.Cmd("moon", command + [fixture, controls], env~).output()
+  guard invalid.exit_code() == 1 &&
+    invalid.stdout().is_empty() &&
+    invalid.stderr().contains("unknown_scan_change_field") else {
+    fail("Scan controls silently dropped unknown data")
+  }
+  @fs.write_file(controls, "{\"add\":[],\"remove\":[]}")
+  let ambiguity = @shell.Cmd(
+    "moon",
+    command + ["examples/release-check/ambiguous-manifest.json", controls],
+    env~,
+  ).output()
+  guard ambiguity.exit_code() == 1 &&
+    ambiguity.stdout().contains("ambiguous_inheritance") else {
+    fail("Identity scan plan hid preexisting ambiguity")
+  }
+  let missing = @shell.Cmd(
+    "moon",
+    command + [fixture, root + "/missing.json"],
+    env~,
+  ).output()
+  guard missing.exit_code() == 1 &&
+    missing.stdout().is_empty() &&
+    missing.stderr().contains("io_error") &&
+    missing.stderr().contains("missing.json") else {
+    fail("Scan changes IO failure lost its path or emitted a partial plan")
   }
   clean_review_directory(root)
 }

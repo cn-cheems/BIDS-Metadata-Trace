@@ -292,6 +292,22 @@ Use `index.select_metadata(query)` for all indexed scans or `audit.filter_metada
 
 The CLI accepts optional explicit paths, exits1 for unresolved entries and otherwise0, including zero matches. Input/IO errors produce no partial stdout. Limits: 256 distinct fields across controls, 1–256 exact choices per equality field, 2,097,152 UTF-16 units per parsed/canonical query, 67 containers and 8 MiB per CLI control file. No regex, numeric ranges/tolerance, nested paths or unit conversion. This is a project-specific cohort review layer, not a full BIDS query engine.
 
+## Plan scan inventory changes
+
+```sh
+moon run cmd/main --target wasm -- plan-scans examples/ds000001/manifest.json examples/edit-plan/scan-inventory.json
+moon run cmd/main --target wasm -- plan-scans examples/ds000001/manifest.json examples/edit-plan/scan-inventory.json --manifest-only > candidate.json
+moon run cmd/main --target wasm -- check examples/ds000001/manifest.json candidate.json --effective-only
+```
+
+The authored example proposes excluding the real fixture's run01 from the indexed inventory, retaining runs02/03 and every original source. The plan reports removed-scan metadata, before/after source coverage and a release impact. The final check exits1 because a scan was removed. This is an explicit counterfactual inventory review, not an observed dataset revision or a recommendation to discard scans.
+
+`ScanChanges::new(additions, removals)` or `from_json(text)` accepts exactly `{"add":["sub-01/func/sub-01_task-rest_run-02_bold.nii"],"remove":[]}`. Both controls are required. Paths use the existing raw-MRI profile; duplicate/case-colliding paths, conflicting add/remove, unknown controls, malformed paths, existing additions and absent removals fail. The final inventory is checked against all retained sources, including entity label collisions and the complete snapshot size limit. An atomic shrink/grow is evaluated only at the final snapshot, not an oversized intermediate state.
+
+`index.plan_scans(changes)` exposes immutable `before()`, `after()`, `impact()`, `before_coverage()`, `after_coverage()` and a complete `to_json()` report. Added scans inherit existing applicable sources; removed scans retain their complete before evidence. No source is automatically removed, even if it becomes unmatched. Resolution errors in newly added or removed scans remain indeterminate in impact evidence; the CLI exits1 with its complete report. `--manifest-only` exports the candidate snapshot, including unresolved sources, and also exits1 when impact is indeterminate. Export success alone does not approve a release. Empty changes are an identity; an empty candidate is a valid inventory, not proof of data completeness.
+
+At most 256 combined operations, two JSON containers, 2,097,152 UTF-16 units per parsed/canonical changes document, and 8 MiB per CLI control file. The existing complete snapshot limit applies. No scan/image bytes are created, deleted or renamed; no disk edits, source edits, image validation or automatic rediscovery are performed. Use source/edit planning separately. The report and review-bundle workflow retain enough data to independently replay before/after checks.
+
 ## Sources and license
 
 Project implementation and authored tests: Apache-2.0, copyright 2026 cn-cheems. External data retain their own license. [PROVENANCE.md](PROVENANCE.md) records specification, dependency, fixture and ecosystem sources. This project does not claim ecosystem uniqueness, clinical suitability or a performance advantage.

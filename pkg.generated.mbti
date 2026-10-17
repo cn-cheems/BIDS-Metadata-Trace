@@ -54,6 +54,7 @@ pub fn DatasetIndex::from_json(String) -> Self raise TraceError
 pub fn DatasetIndex::from_manifest(Array[String], Array[SidecarInput]) -> Self raise TraceError
 pub fn DatasetIndex::plan_edit(Self, String, MetadataPatch) -> EditPlan raise TraceError
 pub fn DatasetIndex::plan_edits(Self, EditBatch) -> BatchEditPlan raise TraceError
+pub fn DatasetIndex::plan_scans(Self, ScanChanges) -> ScanChangePlan raise TraceError
 pub fn DatasetIndex::plan_sources(Self, SourceChanges) -> SourceChangePlan raise TraceError
 pub fn DatasetIndex::resolve(Self, String) -> ResolvedMetadata raise TraceError
 pub fn DatasetIndex::select_metadata(Self, MetadataQuery) -> MetadataSelection
@@ -261,6 +262,23 @@ pub fn ReviewBundle::create(DatasetIndex, DatasetIndex, ReleasePolicy) -> Self r
 pub fn ReviewBundle::from_json(String) -> Self raise TraceError
 pub fn ReviewBundle::report(Self) -> ReleaseCheck
 pub fn ReviewBundle::to_json(Self) -> String
+
+pub struct ScanChangePlan {
+  // private fields
+}
+pub fn ScanChangePlan::after(Self) -> DatasetIndex
+pub fn ScanChangePlan::after_coverage(Self) -> SourceCoverageReport
+pub fn ScanChangePlan::before(Self) -> DatasetIndex
+pub fn ScanChangePlan::before_coverage(Self) -> SourceCoverageReport
+pub fn ScanChangePlan::impact(Self) -> ImpactReport
+pub fn ScanChangePlan::to_json(Self) -> String
+
+pub struct ScanChanges {
+  // private fields
+}
+pub fn ScanChanges::from_json(String) -> Self raise TraceError
+pub fn ScanChanges::new(Array[String], Array[String]) -> Self raise TraceError
+pub fn ScanChanges::to_json(Self) -> String
 
 pub struct ScanQuery {
   // private fields
