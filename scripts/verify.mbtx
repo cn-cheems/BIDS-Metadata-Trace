@@ -1,8 +1,8 @@
 ///|
 import {
   "moonbitlang/async@0.22.4",
-  "moonbitlang/async/shell",
-  "moonbitlang/async/fs",
+  "moonbitlang/async@0.22.4/shell",
+  "moonbitlang/async@0.22.4/fs",
   "moonbitlang/core/env",
   "moonbitlang/core/json",
 }
@@ -401,6 +401,7 @@ async fn main {
   verify_source_changes(env)
   verify_expectations(env)
   verify_scan_selection(env)
+  verify_metadata_filter(env)
   println("Verified core targets and real-data Wasm CLI.")
 }
 
@@ -562,6 +563,77 @@ async fn verify_batch_workflow(env : Map[String, String]) -> Unit {
 }
 
 ///|
+async fn verify_metadata_filter(env : Map[String, String]) -> Unit {
+  let command = [
+    "run", "cmd/main", "--target", "wasm", "--deny-warn", "--", "filter",
+  ]
+  let fixture = "examples/ds000001/manifest.json"
+  let query = "examples/selection/metadata-query.json"
+  let good = @shell.Cmd("moon", command + [fixture, query], env~).output()
+  good.check()
+  guard @json.parse(good.stdout())
+    is { "matched_count": Number(3.0, ..), "error_count": Number(0.0, ..), .. } &&
+    good.stdout().contains("\"RepetitionTime\":2.0") else {
+    fail("Inherited metadata filter lost real-data matches or exact tokens")
+  }
+  let excluded = @shell.Cmd(
+    "moon",
+    command + ["examples/ds000001/changed-manifest.json", query],
+    env~,
+  ).output()
+  excluded.check()
+  guard @json.parse(excluded.stdout())
+    is {
+      "matched_count": Number(0.0, ..),
+      "excluded_count": Number(3.0, ..),
+      ..
+    } &&
+    excluded.stdout().contains("\"RepetitionTime\":3.0") else {
+    fail("Excluded scans lost evidence or fell back to all scans")
+  }
+  let path = "sub-01/func/sub-01_task-balloonanalogrisktask_run-01_bold.nii.gz"
+  let recovered = @shell.Cmd(
+    "moon",
+    command + [fixture, query, "unknown", path, path],
+    env~,
+  ).output()
+  guard recovered.exit_code() == 1 &&
+    @json.parse(recovered.stdout())
+    is {
+      "matched_count": Number(2.0, ..),
+      "error_count": Number(1.0, ..),
+      "total_count": Number(3.0, ..),
+      ..
+    } else {
+    fail("Metadata selection hid errors or duplicate occurrences")
+  }
+  let root = @fs.tmpdir(prefix="bids-trace-review")
+  errdefer clean_review_directory(root)
+  let invalid = root + "/query.json"
+  @fs.write_file(
+    invalid, "{\"present\":[],\"absent\":[],\"equals\":{},\"regex\":true}",
+  )
+  let rejected = @shell.Cmd("moon", command + [fixture, invalid], env~).output()
+  guard rejected.exit_code() == 1 &&
+    rejected.stdout().is_empty() &&
+    rejected.stderr().contains("unknown_metadata_query_field") else {
+    fail("Unknown metadata controls were silently discarded")
+  }
+  let missing = @shell.Cmd(
+    "moon",
+    command + [fixture, root + "/missing.json"],
+    env~,
+  ).output()
+  guard missing.exit_code() == 1 &&
+    missing.stdout().is_empty() &&
+    missing.stderr().contains("io_error") &&
+    missing.stderr().contains("missing.json") else {
+    fail("Metadata query IO error lost its actionable path")
+  }
+  clean_review_directory(root)
+}
+
+///|
 async fn verify_source_coverage(env : Map[String, String]) -> Unit {
   let output = @shell.Cmd(
     "moon",
@@ -677,7 +749,7 @@ async fn verify_review_csv(env : Map[String, String]) -> Unit {
   guard csv.has_prefix(
       "\"query_index\",\"data_path\",\"status\",\"diagnostic\",",
     ) &&
-    csv.split("\r\n").length() == 5 &&
+    csv.split("\r\n").count() == 5 &&
     csv.contains("\"true\",\"json:2.0\"") &&
     csv.contains("\"false\",\"\",\"\",\"\"\r\n") &&
     csv.contains("sub-01_task-balloonanalogrisktask_run-03_bold.nii.gz") else {

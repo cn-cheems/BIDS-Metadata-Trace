@@ -28,6 +28,7 @@ pub struct AuditReport {
 pub fn AuditReport::check_expectations(Self, MetadataExpectations) -> ExpectationReport
 pub fn AuditReport::entries(Self) -> Array[AuditEntry]
 pub fn AuditReport::error_count(Self) -> Int
+pub fn AuditReport::filter_metadata(Self, MetadataQuery) -> MetadataSelection
 pub fn AuditReport::summarize_fields(Self, Array[String]) -> FieldSummaryReport raise TraceError
 pub fn AuditReport::to_json(Self) -> String
 pub fn AuditReport::to_review_csv(Self, Array[String]) -> String raise TraceError
@@ -55,6 +56,7 @@ pub fn DatasetIndex::plan_edit(Self, String, MetadataPatch) -> EditPlan raise Tr
 pub fn DatasetIndex::plan_edits(Self, EditBatch) -> BatchEditPlan raise TraceError
 pub fn DatasetIndex::plan_sources(Self, SourceChanges) -> SourceChangePlan raise TraceError
 pub fn DatasetIndex::resolve(Self, String) -> ResolvedMetadata raise TraceError
+pub fn DatasetIndex::select_metadata(Self, MetadataQuery) -> MetadataSelection
 pub fn DatasetIndex::select_scans(Self, ScanQuery) -> ScanSelection
 pub fn DatasetIndex::source_coverage(Self) -> SourceCoverageReport
 pub fn DatasetIndex::to_manifest_json(Self) -> String
@@ -198,6 +200,21 @@ pub struct MetadataPatch {
 }
 pub fn MetadataPatch::from_json(String) -> Self raise TraceError
 pub fn MetadataPatch::to_json(Self) -> String
+
+pub struct MetadataQuery {
+  // private fields
+}
+pub fn MetadataQuery::from_json(String) -> Self raise TraceError
+pub fn MetadataQuery::to_json(Self) -> String
+
+pub struct MetadataSelection {
+  // private fields
+}
+pub fn MetadataSelection::audit(Self) -> AuditReport
+pub fn MetadataSelection::error_count(Self) -> Int
+pub fn MetadataSelection::paths(Self) -> Array[String]
+pub fn MetadataSelection::to_json(Self) -> String
+pub fn MetadataSelection::to_json_value(Self) -> Json
 
 pub struct ReleaseCheck {
   // private fields

@@ -2,7 +2,7 @@
 priv struct DiscoveryState {
   paths : Array[String]
   sources : Array[@trace.SidecarInput]
-  mut visited : Int
+  mut visited : Int32
 }
 
 ///|
@@ -10,7 +10,7 @@ async fn discovery_walk(
   root : String,
   relative : String,
   state : DiscoveryState,
-  depth : Int,
+  depth : Int32,
 ) -> Unit {
   if depth > 32 {
     raise @trace.TraceError({

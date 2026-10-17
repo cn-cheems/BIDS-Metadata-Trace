@@ -4,7 +4,7 @@ pub(all) struct Diagnostic {
   code : String
   path : String
   message : String
-  offset : Int?
+  offset : Int32?
   related : Array[String]
 } derive(Eq, ToJson, @debug.Debug)
 
@@ -18,8 +18,8 @@ fn reject(
   code : String,
   path : String,
   message : String,
-  offset? : Int,
-  related? : Array[String] = [],
+  offset? : Int32,
+  related~ : Array[String] = [],
 ) -> Unit raise TraceError {
   raise TraceError({ code, path, message, offset, related, })
 }
@@ -40,7 +40,7 @@ pub fn SidecarInput::new(path : String, text : String) -> SidecarInput {
 priv struct Selector {
   path : String
   directory : String
-  depth : Int
+  depth : Int32
   suffix : String
   entities : Map[String, String]
 }

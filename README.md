@@ -6,7 +6,7 @@ This is a bounded implementation of the [BIDS 1.11.2 inheritance principle](http
 
 ## Run the real-data example
 
-Requires MoonBit stable v0.10.14. The CLI runs under Moonrun on the Wasm target and needs no C compiler. The module pins `moonbitlang/async` 0.22.4 for CLI filesystem access; the library uses core only. Native core compilation/testing separately requires a system C toolchain.
+Requires MoonBit stable v0.10.15. The CLI runs under Moonrun on the Wasm target and needs no C compiler. The module pins `moonbitlang/async` 0.22.4 for CLI filesystem access; the library uses core only. Native core compilation/testing separately requires a system C toolchain; on Windows this stable version requires MSVC Build Tools with C++ tools and the Windows SDK.
 
 ```sh
 moon update
@@ -277,6 +277,20 @@ The authored query selects real ds000001 runs 02 and 03 for participant01 and th
 Default CLI selection exits0 after a valid query, including zero matches. `--audit` exits1 if any chosen scan is unresolved, while retaining the complete report; an empty audit exits0 because auditing alone does not grant approval. It never substitutes `audit_all()` for zero matches. Project expectation checks on an empty selected audit remain `Indeterminate`; inspect `selected_count` or use that gate before approving a cohort. Input/IO errors exit1 with a diagnostic on stderr and no partial stdout.
 
 Limits: at most 256 total suffix/entity choices, 2,097,152 UTF-16 units per parsed/canonical query, three JSON containers, and 8 MiB per CLI query file. Original index limits still apply. Metadata predicates, regular expressions, wildcards, ranges, extension filtering, negative filters and derivative profiles are unsupported. This capability selects indexed supported raw-MRI paths; it does not imply BIDS compliance or complete filesystem capture.
+
+## Filter by inherited metadata
+
+```sh
+moon run cmd/main --target wasm -- filter examples/ds000001/manifest.json examples/selection/metadata-query.json
+```
+
+The authored query matches all three real CC0 scans by inherited `RepetitionTime:2.0`, presence of `TaskName` and absence of an unrecorded field. Against `changed-manifest.json` it excludes all three, retaining their complete metadata/history as evidence. No image bytes or private infrastructure are needed.
+
+`MetadataQuery::from_json(text)` requires exactly `{"present":[],"absent":[],"equals":{"RepetitionTime":[2.0]}}`. Constraints are ANDed; each equality array supplies OR choices. Equality requires presence, unlike an optional allowed-only expectation. Null is present, absence is distinct, and `2`, `2.0`, `2e0`, `0` and `-0` remain distinct. Whole arrays/objects and unknown fields are supported. Contradictory absent/present-or-equal constraints, duplicate fields/choices/decoded keys, empty equality choices and unknown controls fail. Present plus equality for the same field is permitted. Empty predicates match all resolved entries.
+
+Use `index.select_metadata(query)` for all indexed scans or `audit.filter_metadata(query)` after filename selection/custom audit. `selection.paths()` contains only proven matches, preserving request order and duplicates. **`selection.audit()` contains matches plus unresolved entries** in that order: parse/ambiguity/unknown-path errors cannot silently disappear from downstream gates. The report classifies every input occurrence as matched, excluded or error, retaining full metadata/source history or diagnostics and original query indices. Counts sum to total input occurrences. An empty result never falls back to all scans or grants release approval. Accessors return defensive copies; the original index and unselected sources remain intact.
+
+The CLI accepts optional explicit paths, exits1 for unresolved entries and otherwise0, including zero matches. Input/IO errors produce no partial stdout. Limits: 256 distinct fields across controls, 1–256 exact choices per equality field, 2,097,152 UTF-16 units per parsed/canonical query, 67 containers and 8 MiB per CLI control file. No regex, numeric ranges/tolerance, nested paths or unit conversion. This is a project-specific cohort review layer, not a full BIDS query engine.
 
 ## Sources and license
 

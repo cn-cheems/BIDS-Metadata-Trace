@@ -1,5 +1,5 @@
 ///|
-fn alphanumeric(value : String, plus? : Bool = false) -> Bool {
+fn alphanumeric(value : String, plus~ : Bool = false) -> Bool {
   !value.is_empty() &&
   value
   .iter()

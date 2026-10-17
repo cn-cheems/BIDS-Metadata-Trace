@@ -14,7 +14,7 @@ fn review_fields(keys : Array[String]) -> Array[String] raise TraceError {
 }
 
 ///|
-fn observation_value(i : Int, path : String) -> Json {
+fn observation_value(i : Int32, path : String) -> Json {
   Json::object({
     "query_index": Json::number(i.to_double()),
     "data_path": Json::string(path),
@@ -34,11 +34,11 @@ fn history_value(history : Array[FieldOrigin]) -> Json {
 /// Exact whole-value groups over an audit, retaining duplicate requests and errors.
 pub struct FieldSummaryReport {
   priv document : Json
-  priv errors : Int
+  priv errors : Int32
 }
 
 ///|
-pub fn FieldSummaryReport::error_count(self : FieldSummaryReport) -> Int {
+pub fn FieldSummaryReport::error_count(self : FieldSummaryReport) -> Int32 {
   self.errors
 }
 

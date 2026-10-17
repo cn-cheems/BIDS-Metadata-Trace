@@ -8,7 +8,7 @@ fn[V] sorted_keys(map : Map[String, V]) -> Array[String] {
 ///|
 // String::compare in this toolchain orders by length first. Reports explicitly
 // use ordinal UTF-16 lexicographic order, independent of that implementation.
-fn lexical_compare(a : String, b : String) -> Int {
+fn lexical_compare(a : String, b : String) -> Int32 {
   let limit = if a.length() < b.length() { a.length() } else { b.length() }
   for i in 0..<limit {
     if a[i] != b[i] {
@@ -60,7 +60,7 @@ fn canonical_json(value : Json) -> String {
 priv struct KeyScanner {
   source : String
   path : String
-  mut position : Int
+  mut position : Int32
 }
 
 ///|
@@ -78,7 +78,7 @@ fn KeyScanner::space(self : KeyScanner) -> Unit {
 
 ///|
 // Called only after core JSON syntax validation, so boundaries are known valid.
-fn KeyScanner::string_end(self : KeyScanner) -> Int {
+fn KeyScanner::string_end(self : KeyScanner) -> Int32 {
   self.position += 1
   while self.source[self.position] != '"' {
     if self.source[self.position] == '\\' {
@@ -102,7 +102,7 @@ fn KeyScanner::value(self : KeyScanner) -> Json raise TraceError {
     '{' => {
       self.position += 1
       self.space()
-      let seen : Map[String, Int] = Map([])
+      let seen : Map[String, Int32] = Map([])
       let fields : Map[String, Json] = Map([])
       if self.source[self.position] != '}' {
         for ;; {
@@ -179,8 +179,8 @@ fn KeyScanner::value(self : KeyScanner) -> Json raise TraceError {
 fn parse_source(
   path : String,
   text : String,
-  container_limit? : Int = 64,
-  text_limit? : Int = 2097152,
+  container_limit~ : Int32 = 64,
+  text_limit~ : Int32 = 2097152,
 ) -> Json raise TraceError {
   if text.length() > text_limit {
     reject(

@@ -70,7 +70,7 @@ pub fn SourceCoverageEntry::unresolved_paths(
 ///|
 pub struct SourceCoverageReport {
   priv entries : Array[SourceCoverageEntry]
-  priv scan_count : Int
+  priv scan_count : Int32
   priv errors : Array[Diagnostic]
 }
 
@@ -82,7 +82,7 @@ pub fn SourceCoverageReport::entries(
 }
 
 ///|
-pub fn SourceCoverageReport::error_count(self : SourceCoverageReport) -> Int {
+pub fn SourceCoverageReport::error_count(self : SourceCoverageReport) -> Int32 {
   self.errors.length()
 }
 

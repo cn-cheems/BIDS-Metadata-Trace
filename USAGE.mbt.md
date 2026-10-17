@@ -237,3 +237,22 @@ test "entity selection composes with acquisition checks" {
   )
 }
 ```
+
+# Filter inherited metadata without hiding unresolved scans
+
+```mbt check
+///|
+test "metadata filtering feeds an error-aware audit" {
+  let path = "sub-01/func/sub-01_task-rest_bold.nii.gz"
+  let index = @trace.DatasetIndex::from_manifest([path], [
+    @trace.SidecarInput::new("task-rest_bold.json", "{\"RepetitionTime\":2.0}"),
+  ])
+  let query = @trace.MetadataQuery::from_json(
+    "{\"present\":[],\"absent\":[],\"equals\":{\"RepetitionTime\":[2.0]}}",
+  )
+  let selection = index.audit(["unknown", path]).filter_metadata(query)
+  assert_eq(selection.paths(), [path])
+  assert_eq(selection.audit().error_count(), 1)
+  assert_eq(selection.audit().entries().length(), 2)
+}
+```

@@ -116,8 +116,8 @@ pub extend ExpectationDecision with Eq::{equal, not_equal}
 ///|
 pub struct ExpectationReport {
   priv outcome : ExpectationDecision
-  priv violations : Int
-  priv errors : Int
+  priv violations : Int32
+  priv errors : Int32
   priv document : Json
 }
 
@@ -130,12 +130,12 @@ pub fn ExpectationReport::decision(
 
 ///|
 /// Counts failed field checks, including repeated query occurrences.
-pub fn ExpectationReport::violation_count(self : ExpectationReport) -> Int {
+pub fn ExpectationReport::violation_count(self : ExpectationReport) -> Int32 {
   self.violations
 }
 
 ///|
-pub fn ExpectationReport::error_count(self : ExpectationReport) -> Int {
+pub fn ExpectationReport::error_count(self : ExpectationReport) -> Int32 {
   self.errors
 }
 

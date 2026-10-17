@@ -92,7 +92,7 @@ pub fn DatasetIndex::resolve(
   let candidates = self.sidecars.filter(sidecar => {
     applies(sidecar.selector, data)
   })
-  let at_depth : Map[Int, Array[String]] = Map([])
+  let at_depth : Map[Int32, Array[String]] = Map([])
   for sidecar in candidates {
     let level = sidecar.selector.depth
     let paths = at_depth.get_or_init(level, () => [])

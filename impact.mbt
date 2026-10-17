@@ -114,7 +114,7 @@ pub fn ImpactReport::entries(self : ImpactReport) -> Array[ImpactEntry] {
 }
 
 ///|
-pub fn ImpactReport::changed_count(self : ImpactReport) -> Int {
+pub fn ImpactReport::changed_count(self : ImpactReport) -> Int32 {
   self.entries
   .filter(e => e.kind == Changed || e.kind == Added || e.kind == Removed)
   .length()
@@ -122,7 +122,7 @@ pub fn ImpactReport::changed_count(self : ImpactReport) -> Int {
 
 ///|
 /// Count indeterminate scan paths, not individual diagnostics.
-pub fn ImpactReport::error_count(self : ImpactReport) -> Int {
+pub fn ImpactReport::error_count(self : ImpactReport) -> Int32 {
   self.entries.filter(e => e.kind == Unresolved).length()
 }
 

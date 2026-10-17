@@ -1,0 +1,5 @@
+{
+  "present": ["TaskName"],
+  "absent": ["UnrecordedField"],
+  "equals": {"RepetitionTime": [2.0]}
+}

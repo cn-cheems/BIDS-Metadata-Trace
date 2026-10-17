@@ -21,8 +21,8 @@ jobs:
         if: runner.os == 'Windows'
       - uses: hustcer/setup-moonbit@v1
         with:
-          version: 0.10.14+7d59c7ec9
-          core-version: 0.10.14+7d59c7ec9
+          version: 0.10.15+943464bfa
+          core-version: 0.10.15+943464bfa
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: moon version --all

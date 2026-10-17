@@ -1,10 +1,10 @@
 ///|
 // Moonrun supplies the WASI process exit; core domain logic has no FFI.
-extern "wasm" fn exit(code : Int) -> Unit = "wasi_snapshot_preview1" "proc_exit"
+extern "wasm" fn exit(code : Int32) -> Unit = "wasi_snapshot_preview1" "proc_exit"
 
 ///|
 fn usage() -> String {
-  "Usage: bids-metadata-trace discover DATASET_DIR [--manifest-only] | select MANIFEST.json QUERY.json [--audit] | sources MANIFEST.json | summarize MANIFEST.json FIELD... | table MANIFEST.json FIELD... | expect MANIFEST.json EXPECTATIONS.json [DATA_PATH ...] | plan MANIFEST.json SIDECAR_PATH PATCH.json [--manifest-only] | plan-batch MANIFEST.json BATCH.json [--manifest-only] | plan-sources MANIFEST.json CHANGES.json [--manifest-only] | bundle BEFORE.json AFTER.json [--effective-only] | replay BUNDLE.json | resolve MANIFEST.json DATA_PATH | audit MANIFEST.json [DATA_PATH ...] | diff BEFORE.json AFTER.json | check BEFORE.json AFTER.json [--effective-only]"
+  "Usage: bids-metadata-trace discover DATASET_DIR [--manifest-only] | select MANIFEST.json QUERY.json [--audit] | filter MANIFEST.json METADATA_QUERY.json [DATA_PATH ...] | sources MANIFEST.json | summarize MANIFEST.json FIELD... | table MANIFEST.json FIELD... | expect MANIFEST.json EXPECTATIONS.json [DATA_PATH ...] | plan MANIFEST.json SIDECAR_PATH PATCH.json [--manifest-only] | plan-batch MANIFEST.json BATCH.json [--manifest-only] | plan-sources MANIFEST.json CHANGES.json [--manifest-only] | bundle BEFORE.json AFTER.json [--effective-only] | replay BUNDLE.json | resolve MANIFEST.json DATA_PATH | audit MANIFEST.json [DATA_PATH ...] | diff BEFORE.json AFTER.json | check BEFORE.json AFTER.json [--effective-only]"
 }
 
 ///|
@@ -138,6 +138,37 @@ async fn load_scan_query(path : String) -> @trace.ScanQuery {
 }
 
 ///|
+async fn load_metadata_query(path : String) -> @trace.MetadataQuery {
+  @trace.MetadataQuery::from_json(read_control(path))
+}
+
+///|
+async fn read_control(path : String) -> String {
+  try {
+    if @fs.file_size(path) > 8388608L {
+      raise @trace.TraceError({
+        code: "input_limit",
+        path,
+        message: "Control input exceeds 8 MiB on disk; reduce the review scope.",
+        offset: None,
+        related: [],
+      })
+    }
+    @fs.read_file(path).text()
+  } catch {
+    @trace.TraceError(d) => raise @trace.TraceError(d)
+    error =>
+      raise @trace.TraceError({
+        code: "io_error",
+        path,
+        message: error.to_string(),
+        offset: None,
+        related: [],
+      })
+  }
+}
+
+///|
 async fn load_manifest(path : String) -> @trace.DatasetIndex {
   try {
     if @fs.file_size(path) > 8388608L {
@@ -176,7 +207,7 @@ async fn main {
   if args.length() < 3 ||
     !(((args[1] == "resolve" || args[1] == "diff") && args.length() == 4) ||
     args[1] == "audit" ||
-    (args[1] == "expect" && args.length() >= 4) ||
+    ((args[1] == "expect" || args[1] == "filter") && args.length() >= 4) ||
     (
       args[1] == "select" &&
       (args.length() == 4 || (args.length() == 5 && args[4] == "--audit"))
@@ -233,7 +264,19 @@ async fn main {
       return
     }
     let index = load_manifest(args[2])
-    if args[1] == "select" {
+    if args[1] == "filter" {
+      let query = load_metadata_query(args[3])
+      let audit = if args.length() == 4 {
+        index.audit_all()
+      } else {
+        index.audit(args[4:].to_owned())
+      }
+      let selection = audit.filter_metadata(query)
+      println(selection.to_json())
+      if selection.error_count() > 0 {
+        exit(1)
+      }
+    } else if args[1] == "select" {
       let selection = index.select_scans(load_scan_query(args[3]))
       if args.length() == 4 {
         println(selection.to_json())

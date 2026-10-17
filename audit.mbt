@@ -37,7 +37,7 @@ pub fn AuditReport::entries(self : AuditReport) -> Array[AuditEntry] {
 }
 
 ///|
-pub fn AuditReport::error_count(self : AuditReport) -> Int {
+pub fn AuditReport::error_count(self : AuditReport) -> Int32 {
   self.entries.filter(e => e.error is Some(_)).length()
 }
 
