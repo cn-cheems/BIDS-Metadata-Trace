@@ -331,3 +331,9 @@ Project implementation and authored tests: Apache-2.0, copyright 2026 cn-cheems.
 `DatasetChanges::new(scans, sources, edits)` combines inventory and metadata changes against one baseline. `DatasetIndex::plan_changes` validates only the final combined snapshot, so coordinated scan/source renames can succeed without invalid intermediate states. Sources cannot be edited and added/removed in the same transaction. The combined limit is 256 operations and 2,097,152 UTF-16 units. No files are written; unresolved inheritance remains explicit impact evidence.
 
 Run `moon run cmd/main -- plan-changes examples/ds000001/manifest.json examples/ds000001/combined-changes.json` to review a synthetic acquisition edit on the public CC0 fixture. Add `--manifest-only` to export the complete candidate. Controls require exactly `scans`, `sources`, and `edits`, using the existing scan/source changes and batch-edit schemas. Unknown controls fail.
+
+## Prove an override removal is safe
+
+`DatasetIndex::plan_prune(source_path, fields)` accepts 1–256 distinct existing field names and returns a `PrunePlan` only when all indexed scans resolve before/after and have exactly equal effective metadata, including unknown fields and numeric spellings. An unmatched source or any unresolved scan prevents proof. The source remains even if empty; provenance changes remain visible. This guarantee covers only the manifest's scan inventory. The baseline and disk files are unchanged. Use `after()`, `patch()` and `impact()` to export or compose the reviewed proposal.
+
+Run `moon run cmd/main -- prune examples/ds000001/provenance-manifest.json sub-01/func/sub-01_task-balloonanalogrisktask_run-01_bold.json RepetitionTime`. This removes a deliberately redundant synthetic override of the real fixture. The report includes the complete edit, both manifests and impact evidence; unsafe requests return a diagnostic and exit 1 without a partial report.

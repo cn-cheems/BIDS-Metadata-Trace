@@ -219,6 +219,7 @@ async fn main {
       (args.length() == 4 || (args.length() == 5 && args[4] == "--audit"))
     ) ||
     (args[1] == "sources" && args.length() == 3) ||
+    (args[1] == "prune" && args.length() >= 5) ||
     ((args[1] == "summarize" || args[1] == "table") && args.length() >= 4) ||
     (args[1] == "replay" && args.length() == 3) ||
     (
@@ -351,6 +352,8 @@ async fn main {
       println(
         @trace.ReviewBundle::create(index, load_manifest(args[3]), policy).to_json(),
       )
+    } else if args[1] == "prune" {
+      println(index.plan_prune(args[3], args[4:].to_owned()).to_json())
     } else if args[1] == "plan-changes" {
       let plan = index.plan_changes(
         @trace.DatasetChanges::from_json(read_control(args[3])),

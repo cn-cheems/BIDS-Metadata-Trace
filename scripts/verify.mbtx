@@ -34,6 +34,37 @@ async fn main {
     }
   }
   let path = "sub-01/func/sub-01_task-balloonanalogrisktask_run-01_bold.nii.gz"
+  let pruning = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--", "prune", "examples/ds000001/provenance-manifest.json",
+      "sub-01/func/sub-01_task-balloonanalogrisktask_run-01_bold.json", "RepetitionTime",
+    ],
+    env~,
+  ).output()
+  pruning.check()
+  guard @json.parse(pruning.stdout())
+    is {
+      "guarantee": String("exact_effective_values_for_all_indexed_scans"),
+      "edit": { "after_sidecar": Object(empty), .. },
+      ..
+    } &&
+    empty.is_empty() else {
+    fail("Prune CLI did not return a proven removal of the redundant override.")
+  }
+  let unsafe_pruning = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--", "prune", "examples/ds000001/manifest.json", "task-balloonanalogrisktask_bold.json",
+      "RepetitionTime",
+    ],
+    env~,
+  ).output()
+  if unsafe_pruning.exit_code() != 1 ||
+    !unsafe_pruning.stdout().trim().is_empty() ||
+    !unsafe_pruning.stderr().contains("unsafe_prune") {
+    fail("Unsafe pruning must reject without emitting a candidate.")
+  }
   let transaction = @shell.Cmd(
     "moon",
     [

@@ -298,3 +298,26 @@ test "combined transaction is exportable and leaves its baseline intact" {
   assert_true(index.resolve(path).get("RepetitionTime") is None)
 }
 ```
+
+## Remove a redundant override with a complete proof
+
+```mbt check
+///|
+test "pruning preserves effective values and exposes its replayable patch" {
+  let path = "sub-01/func/sub-01_task-rest_bold.nii"
+  let local_source = "sub-01/func/sub-01_task-rest_bold.json"
+  let index = @trace.DatasetIndex::from_manifest([path], [
+    @trace.SidecarInput::new("bold.json", "{\"RepetitionTime\":2.0}"),
+    @trace.SidecarInput::new(local_source, "{\"RepetitionTime\":2.0}"),
+  ])
+  let plan = index.plan_prune(local_source, ["RepetitionTime"])
+  assert_eq(
+    plan.after().resolve(path).get("RepetitionTime").unwrap().stringify(),
+    "2.0",
+  )
+  assert_eq(
+    index.plan_edit(local_source, plan.patch()).after().to_manifest_json(),
+    plan.after().to_manifest_json(),
+  )
+}
+```

@@ -60,3 +60,7 @@ Coordinated batch planning on 2026-10-09 adds 12 core tests and an executable ty
 # Atomic dataset planning — 2026-10-18
 
 Stable MoonBit 0.10.15+943464bfa: formatting, generated interfaces, strict all-target checking, Wasm 167/167 tests, Wasm-GC and JavaScript 161/161 each, and actual WSL Ubuntu native execution 161/161 passed. `scripts/verify.mbtx --e2e-only` also checks `plan-changes` against ds000001: all three scan paths and TaskName survive the synthetic RT edit. A case-sensitive subject-label migration is tested as one final snapshot; unknown controls, duplicate controls, conflicting source operations and atomic failure/recovery are covered. The external async script dependency still emits its previously documented duplicate-import warning; project strict checking passes. CI results are checked after push.
+
+## Proven override pruning — 2026-10-18
+
+Strict checking and execution passed on Wasm (172 tests), Wasm-GC, JavaScript and WSL Ubuntu native (166 each). Tests cover raw numeric token differences, null versus absence, whole-array changes, empty/unmatched sources, duplicate/missing removal fields, unchanged baselines, patch round trips and an unrelated scan with unresolved inheritance. The CLI end-to-end suite proves successful redundant pruning on the attributed fixture and checks unsafe removal exits 1 with no partial stdout. Generated interfaces and formatting were refreshed. No claim is made for scans outside the explicit manifest.

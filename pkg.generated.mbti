@@ -88,6 +88,7 @@ pub fn DatasetIndex::from_manifest(Array[String], Array[SidecarInput]) -> Self r
 pub fn DatasetIndex::plan_changes(Self, DatasetChanges) -> DatasetChangePlan raise TraceError
 pub fn DatasetIndex::plan_edit(Self, String, MetadataPatch) -> EditPlan raise TraceError
 pub fn DatasetIndex::plan_edits(Self, EditBatch) -> BatchEditPlan raise TraceError
+pub fn DatasetIndex::plan_prune(Self, String, Array[String]) -> PrunePlan raise TraceError
 pub fn DatasetIndex::plan_scans(Self, ScanChanges) -> ScanChangePlan raise TraceError
 pub fn DatasetIndex::plan_sources(Self, SourceChanges) -> SourceChangePlan raise TraceError
 pub fn DatasetIndex::resolve(Self, String) -> ResolvedMetadata raise TraceError
@@ -250,6 +251,14 @@ pub fn MetadataSelection::error_count(Self) -> Int
 pub fn MetadataSelection::paths(Self) -> Array[String]
 pub fn MetadataSelection::to_json(Self) -> String
 pub fn MetadataSelection::to_json_value(Self) -> Json
+
+pub struct PrunePlan {
+  // private fields
+}
+pub fn PrunePlan::after(Self) -> DatasetIndex
+pub fn PrunePlan::impact(Self) -> ImpactReport
+pub fn PrunePlan::patch(Self) -> MetadataPatch
+pub fn PrunePlan::to_json(Self) -> String
 
 pub struct ReleaseCheck {
   // private fields
