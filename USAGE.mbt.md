@@ -280,3 +280,21 @@ test "a filename scope carries exact acquisition expectations" {
   )
 }
 ```
+# Plan one final dataset snapshot
+
+```mbt check
+///|
+test "combined transaction is exportable and leaves its baseline intact" {
+  let path = "sub-01/func/sub-01_task-rest_bold.nii"
+  let index = @trace.DatasetIndex::from_manifest([path], [])
+  let changes = @trace.DatasetChanges::from_json(
+    "{\"scans\":{\"add\":[],\"remove\":[]},\"sources\":{\"add\":[{\"path\":\"bold.json\",\"metadata\":{\"RepetitionTime\":2.0}}],\"remove\":[]},\"edits\":{\"edits\":[]}}",
+  )
+  let plan = index.plan_changes(changes)
+  assert_eq(
+    plan.after().resolve(path).get("RepetitionTime").unwrap().stringify(),
+    "2.0",
+  )
+  assert_true(index.resolve(path).get("RepetitionTime") is None)
+}
+```

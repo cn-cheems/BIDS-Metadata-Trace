@@ -60,6 +60,21 @@ pub fn BatchEditPlan::sidecar_paths(Self) -> Array[String]
 pub fn BatchEditPlan::to_json(Self) -> String
 pub fn BatchEditPlan::updated_sidecar_json(Self, String) -> String?
 
+pub struct DatasetChangePlan {
+  // private fields
+}
+pub fn DatasetChangePlan::after(Self) -> DatasetIndex
+pub fn DatasetChangePlan::before(Self) -> DatasetIndex
+pub fn DatasetChangePlan::impact(Self) -> ImpactReport
+pub fn DatasetChangePlan::to_json(Self) -> String
+
+pub struct DatasetChanges {
+  // private fields
+}
+pub fn DatasetChanges::from_json(String) -> Self raise TraceError
+pub fn DatasetChanges::new(ScanChanges, SourceChanges, EditBatch) -> Self raise TraceError
+pub fn DatasetChanges::to_json(Self) -> String
+
 pub struct DatasetIndex {
   // private fields
 }
@@ -70,6 +85,7 @@ pub fn DatasetIndex::compare(Self, Self) -> ImpactReport
 pub fn DatasetIndex::data_paths(Self) -> Array[String]
 pub fn DatasetIndex::from_json(String) -> Self raise TraceError
 pub fn DatasetIndex::from_manifest(Array[String], Array[SidecarInput]) -> Self raise TraceError
+pub fn DatasetIndex::plan_changes(Self, DatasetChanges) -> DatasetChangePlan raise TraceError
 pub fn DatasetIndex::plan_edit(Self, String, MetadataPatch) -> EditPlan raise TraceError
 pub fn DatasetIndex::plan_edits(Self, EditBatch) -> BatchEditPlan raise TraceError
 pub fn DatasetIndex::plan_scans(Self, ScanChanges) -> ScanChangePlan raise TraceError

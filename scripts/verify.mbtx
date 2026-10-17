@@ -34,6 +34,37 @@ async fn main {
     }
   }
   let path = "sub-01/func/sub-01_task-balloonanalogrisktask_run-01_bold.nii.gz"
+  let transaction = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--", "plan-changes", "examples/ds000001/manifest.json",
+      "examples/ds000001/combined-changes.json", "--manifest-only",
+    ],
+    env~,
+  ).output()
+  transaction.check()
+  guard @json.parse(transaction.stdout())
+    is {
+      "files": Array(files),
+      "sidecars": Array(
+        [
+          {
+            "metadata": {
+              "RepetitionTime": Number(3.0, ..),
+              "TaskName": String(_),
+              ..
+            },
+            ..
+          },
+        ]
+      ),
+      ..
+    } &&
+    files.length() == 3 else {
+    fail(
+      "Combined transaction failed to preserve the real fixture inventory and unrelated metadata.",
+    )
+  }
   let output = @shell.Cmd(
     "moon",
     [

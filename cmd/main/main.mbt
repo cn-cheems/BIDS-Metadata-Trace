@@ -225,7 +225,8 @@ async fn main {
       (
         args[1] == "plan-batch" ||
         args[1] == "plan-sources" ||
-        args[1] == "plan-scans"
+        args[1] == "plan-scans" ||
+        args[1] == "plan-changes"
       ) &&
       (
         args.length() == 4 ||
@@ -350,6 +351,20 @@ async fn main {
       println(
         @trace.ReviewBundle::create(index, load_manifest(args[3]), policy).to_json(),
       )
+    } else if args[1] == "plan-changes" {
+      let plan = index.plan_changes(
+        @trace.DatasetChanges::from_json(read_control(args[3])),
+      )
+      println(
+        if args.length() == 5 {
+          plan.after().to_manifest_json()
+        } else {
+          plan.to_json()
+        },
+      )
+      if plan.impact().error_count() > 0 {
+        exit(1)
+      }
     } else if args[1] == "plan-scans" {
       let plan = index.plan_scans(load_scan_changes(args[3]))
       println(

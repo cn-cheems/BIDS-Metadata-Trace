@@ -326,3 +326,8 @@ The CLI exits0 only for Pass and exits1 for Violations/Indeterminate with the co
 ## Sources and license
 
 Project implementation and authored tests: Apache-2.0, copyright 2026 cn-cheems. External data retain their own license. [PROVENANCE.md](PROVENANCE.md) records specification, dependency, fixture and ecosystem sources. This project does not claim ecosystem uniqueness, clinical suitability or a performance advantage.
+# Atomic dataset transactions
+
+`DatasetChanges::new(scans, sources, edits)` combines inventory and metadata changes against one baseline. `DatasetIndex::plan_changes` validates only the final combined snapshot, so coordinated scan/source renames can succeed without invalid intermediate states. Sources cannot be edited and added/removed in the same transaction. The combined limit is 256 operations and 2,097,152 UTF-16 units. No files are written; unresolved inheritance remains explicit impact evidence.
+
+Run `moon run cmd/main -- plan-changes examples/ds000001/manifest.json examples/ds000001/combined-changes.json` to review a synthetic acquisition edit on the public CC0 fixture. Add `--manifest-only` to export the complete candidate. Controls require exactly `scans`, `sources`, and `edits`, using the existing scan/source changes and batch-edit schemas. Unknown controls fail.
