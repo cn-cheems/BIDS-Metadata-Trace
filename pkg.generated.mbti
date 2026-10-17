@@ -15,6 +15,23 @@ pub(all) suberror TraceError {
 pub fn TraceError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
+pub struct AcquisitionReport {
+  // private fields
+}
+pub fn AcquisitionReport::decision(Self) -> ExpectationDecision
+pub fn AcquisitionReport::error_count(Self) -> Int
+pub fn AcquisitionReport::to_json(Self) -> String
+pub fn AcquisitionReport::to_json_value(Self) -> Json
+pub fn AcquisitionReport::uncovered_paths(Self) -> Array[String]
+pub fn AcquisitionReport::unmatched_rule_ids(Self) -> Array[String]
+pub fn AcquisitionReport::violation_count(Self) -> Int
+
+pub struct AcquisitionRules {
+  // private fields
+}
+pub fn AcquisitionRules::from_json(String) -> Self raise TraceError
+pub fn AcquisitionRules::to_json(Self) -> String
+
 pub struct AuditEntry {
   // private fields
 }
@@ -48,6 +65,7 @@ pub struct DatasetIndex {
 }
 pub fn DatasetIndex::audit(Self, Array[String]) -> AuditReport
 pub fn DatasetIndex::audit_all(Self) -> AuditReport
+pub fn DatasetIndex::check_acquisition(Self, AcquisitionRules) -> AcquisitionReport
 pub fn DatasetIndex::compare(Self, Self) -> ImpactReport
 pub fn DatasetIndex::data_paths(Self) -> Array[String]
 pub fn DatasetIndex::from_json(String) -> Self raise TraceError

@@ -256,3 +256,27 @@ test "metadata filtering feeds an error-aware audit" {
   assert_eq(selection.audit().entries().length(), 2)
 }
 ```
+
+## Check scoped acquisition requirements
+
+```mbt check
+///|
+test "a filename scope carries exact acquisition expectations" {
+  let path = "sub-01/func/sub-01_task-rest_bold.nii"
+  let index = @trace.DatasetIndex::from_manifest([path], [
+    @trace.SidecarInput::new("bold.json", "{\"RepetitionTime\":2.0}"),
+  ])
+  let rules = @trace.AcquisitionRules::from_json(
+    "{\"rules\":[{\"id\":\"bold\",\"select\":{\"suffixes\":[\"bold\"],\"entities\":{}},\"expect\":{\"required\":[\"RepetitionTime\"],\"allowed\":{\"RepetitionTime\":[2.0]}}}]}",
+  )
+  assert_true(
+    index.check_acquisition(rules).decision() ==
+    @trace.ExpectationDecision::Pass,
+  )
+  let empty = @trace.DatasetIndex::from_manifest([], [])
+  assert_true(
+    empty.check_acquisition(rules).decision() ==
+    @trace.ExpectationDecision::Indeterminate,
+  )
+}
+```

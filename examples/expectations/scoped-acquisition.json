@@ -1,0 +1,14 @@
+{
+  "rules": [
+    {
+      "id": "all-bold",
+      "select": {"suffixes": ["bold"], "entities": {}},
+      "expect": {"required": ["RepetitionTime", "TaskName"], "allowed": {"RepetitionTime": [2.0]}}
+    },
+    {
+      "id": "later-runs",
+      "select": {"suffixes": ["bold"], "entities": {"run": ["2", "3"]}},
+      "expect": {"required": ["TaskName"], "allowed": {}}
+    }
+  ]
+}

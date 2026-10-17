@@ -308,6 +308,21 @@ The authored example proposes excluding the real fixture's run01 from the indexe
 
 At most 256 combined operations, two JSON containers, 2,097,152 UTF-16 units per parsed/canonical changes document, and 8 MiB per CLI control file. The existing complete snapshot limit applies. No scan/image bytes are created, deleted or renamed; no disk edits, source edits, image validation or automatic rediscovery are performed. Use source/edit planning separately. The report and review-bundle workflow retain enough data to independently replay before/after checks.
 
+## Check scoped acquisition rules
+
+```sh
+moon run cmd/main --target wasm -- acquisition examples/ds000001/manifest.json examples/expectations/scoped-acquisition.json
+moon run cmd/main --target wasm -- acquisition examples/ds000001/changed-manifest.json examples/expectations/scoped-acquisition.json
+```
+
+The authored rule set checks all three real CC0 BOLD scans and additionally checks runs02/03. The unchanged snapshot passes; the synthetic `RepetitionTime:3.0` snapshot fails with three field violations. Overlapping rules apply together, so the extra later-run rule never overrides the common acquisition requirement. These are project expectations, not BIDS or scientific validity certificates.
+
+`AcquisitionRules::from_json(text)` requires exactly `{"rules":[{"id":"func","select":{"suffixes":["bold"],"entities":{}},"expect":{"required":["RepetitionTime"],"allowed":{"RepetitionTime":[2.0]}}}]}`. Rule scopes use the existing filename `ScanQuery`, not metadata success or metadata filtering. Each matching rule's `MetadataExpectations` must pass. Define between 1 and 64 rules with unique ids (1–64 ASCII letters/digits/underscore/hyphen, no case collisions); rules serialize in ordinal id order. All nested controls retain their strict validation, exact values and limits. Unknown controls, duplicate keys, unsupported selectors, malformed rules and duplicate ids fail without dropping data.
+
+`index.check_acquisition(rules)` checks the entire indexed inventory once, applies every matching rule, and returns `AcquisitionReport`. **Every indexed scan must have a rule, and every declared rule must match at least one scan.** Empty inventories, uncovered scans, unmatched rules or resolution errors make the overall decision `Indeterminate`, taking priority over field violations. Otherwise any failed check yields `Violations`; only complete coverage with no errors/violations yields `Pass`. `error_count()` counts unresolved scans once even when multiple rules match; `violation_count()` counts failed rule/field pairs. `uncovered_paths()` and `unmatched_rule_ids()` identify coverage mistakes. Reports retain per-scan rule coverage, every rule result, the full original audit and manifest, and the normalized rule set. Existing single-expectation APIs and serialized audit output retain their behavior.
+
+The CLI exits0 only for Pass and exits1 for Violations/Indeterminate with the complete report; malformed input or IO failure emits a diagnostic on stderr and no partial stdout. Limits: 2,097,152 UTF-16 units per parsed/canonical rule set, 70 containers including the rule envelopes, existing per-query/per-expectation limits, and 8 MiB per CLI rules file. Reports repeat evidence and can exceed input size. No rule priorities, exemptions, automatic corrections, numeric tolerance, nested field predicates or full BIDS schema validation are implemented. Scans outside the supplied inventory remain outside the check.
+
 ## Sources and license
 
 Project implementation and authored tests: Apache-2.0, copyright 2026 cn-cheems. External data retain their own license. [PROVENANCE.md](PROVENANCE.md) records specification, dependency, fixture and ecosystem sources. This project does not claim ecosystem uniqueness, clinical suitability or a performance advantage.

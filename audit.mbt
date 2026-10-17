@@ -62,27 +62,30 @@ pub fn DatasetIndex::audit_all(self : DatasetIndex) -> AuditReport {
 }
 
 ///|
-pub fn AuditReport::to_json(self : AuditReport) -> String {
-  canonical_json(
-    Json::object({
-      "error_count": Json::number(self.error_count().to_double()),
-      "entries": Json::array(
-        self.entries.map(e => {
-          let fields : Map[String, Json] = { "data_path": Json::string(e.path) }
-          match (e.result, e.error) {
-            (Some(result), None) => {
-              fields["status"] = Json::string("resolved")
-              fields["result"] = result.report_value()
-            }
-            (None, Some(diagnostic)) => {
-              fields["status"] = Json::string("error")
-              fields["diagnostic"] = diagnostic.to_json()
-            }
-            _ => abort("AuditEntry invariant")
+fn AuditReport::report_value(self : AuditReport) -> Json {
+  Json::object({
+    "error_count": Json::number(self.error_count().to_double()),
+    "entries": Json::array(
+      self.entries.map(e => {
+        let fields : Map[String, Json] = { "data_path": Json::string(e.path) }
+        match (e.result, e.error) {
+          (Some(result), None) => {
+            fields["status"] = Json::string("resolved")
+            fields["result"] = result.report_value()
           }
-          Json::object(fields)
-        }),
-      ),
-    }),
-  )
+          (None, Some(diagnostic)) => {
+            fields["status"] = Json::string("error")
+            fields["diagnostic"] = diagnostic.to_json()
+          }
+          _ => abort("AuditEntry invariant")
+        }
+        Json::object(fields)
+      }),
+    ),
+  })
+}
+
+///|
+pub fn AuditReport::to_json(self : AuditReport) -> String {
+  canonical_json(self.report_value())
 }
