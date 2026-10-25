@@ -1,0 +1,116 @@
+///|
+import {
+  "moonbitlang/async@0.22.4",
+  "moonbitlang/async@0.22.4/fs",
+  "moonbitlang/async@0.22.4/shell",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+async fn acceptance_command(args : Array[String]) -> String {
+  let output = @shell.Cmd("moon", args).output()
+  guard output.exit_code() == 0 else {
+    fail(
+      "Acceptance command failed: moon " +
+      args.join(" ") +
+      "\n" +
+      output.stdout() +
+      output.stderr(),
+    )
+  }
+  if !output.stdout().is_empty() {
+    println(output.stdout().trim_end())
+  }
+  if !output.stderr().is_empty() {
+    println(output.stderr().trim_end())
+  }
+  output.stdout()
+}
+
+///|
+async fn main {
+  let report_path = "_build/acceptance.json"
+  // Clear stale evidence even when argument validation fails.
+  if @fs.exists(report_path) {
+    @fs.remove(report_path)
+  }
+  let args = @env.args()[1:].to_owned()
+  let seen : Map[String, Bool] = Map([])
+  for arg in args {
+    guard ["--portable-only", "--native-only", "--working-tree"].contains(arg) &&
+      !seen.contains(arg) else {
+      fail(
+        "Usage: moon run scripts/acceptance.mbtx -- [--portable-only|--native-only] [--working-tree]",
+      )
+    }
+    seen[arg] = true
+  }
+  guard !(seen.contains("--portable-only") && seen.contains("--native-only")) else {
+    fail("Choose only one target subset")
+  }
+  let revision = @shell.Cmd("git", ["rev-parse", "HEAD"]).output()
+  revision.check()
+  if !seen.contains("--working-tree") {
+    let status = @shell.Cmd("git", ["status", "--porcelain"]).output()
+    status.check()
+    guard status.stdout().trim().is_empty() else {
+      fail(
+        "Acceptance requires a clean checkout; use --working-tree only for an explicitly uncommitted development check",
+      )
+    }
+  }
+  let version = acceptance_command(["version", "--all"])
+  ignore(acceptance_command(["fmt", "--check"]))
+  ignore(
+    acceptance_command([
+      "fmt", "--check", "scripts/verify.mbtx", "scripts/package-check.mbtx", "scripts/acceptance.mbtx",
+      "scripts/check-acceptance-guards.mbtx",
+    ]),
+  )
+  ignore(acceptance_command(["-C", "examples/consumer", "fmt", "--check"]))
+  let interfaces = ["pkg.generated.mbti", "cmd/main/pkg.generated.mbti"]
+  let before : Array[String] = []
+  for path in interfaces {
+    before.push(@fs.read_file(path).text())
+  }
+  ignore(acceptance_command(["info", "--target", "all"]))
+  for i, path in interfaces {
+    guard before[i] == @fs.read_file(path).text() else {
+      fail("Generated public interface drift: " + path)
+    }
+  }
+  ignore(acceptance_command(["check", "--target", "all", "--deny-warn"]))
+  let targets = if seen.contains("--native-only") {
+    ["native"]
+  } else if seen.contains("--portable-only") {
+    ["wasm", "wasm-gc", "js"]
+  } else {
+    ["wasm", "wasm-gc", "js", "native"]
+  }
+  for target in targets {
+    ignore(acceptance_command(["build", "--target", target, "--deny-warn"]))
+    ignore(acceptance_command(["test", "--target", target, "--deny-warn"]))
+  }
+  ignore(acceptance_command(["run", "scripts/verify.mbtx", "--", "--e2e-only"]))
+  let package_args = ["run", "scripts/package-check.mbtx", "--"]
+  if seen.contains("--portable-only") {
+    package_args.push("--portable-only")
+  }
+  if seen.contains("--native-only") {
+    package_args.push("--native-only")
+  }
+  ignore(acceptance_command(package_args))
+  let report = Json::object({
+    "status": Json::string("passed"),
+    "revision": Json::string(revision.stdout().trim().to_owned()),
+    "working_tree": Json::boolean(seen.contains("--working-tree")),
+    "core_targets": Json::array(targets.map(Json::string)),
+    "archive_consumer_targets": Json::array(targets.map(Json::string)),
+    "cli_target": Json::string("wasm"),
+    "toolchain": Json::string(version),
+    "publication_attempted": Json::boolean(false),
+  })
+  @fs.write_file(report_path, report.stringify(indent=2) + "\n")
+  println("Acceptance passed; evidence: " + report_path)
+}

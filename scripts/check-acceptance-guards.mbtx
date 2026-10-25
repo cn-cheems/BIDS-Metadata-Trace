@@ -1,0 +1,39 @@
+///|
+import {
+  "moonbitlang/async@0.22.4",
+  "moonbitlang/async@0.22.4/fs",
+  "moonbitlang/async@0.22.4/shell",
+}
+
+///|
+async fn main {
+  @fs.mkdir("_build", allow_exist=true)
+  let path = "_build/acceptance.json"
+  for
+    arguments in [
+      ["--unknown"],
+      ["--portable-only", "--portable-only"],
+      ["--portable-only", "--native-only"],
+    ] {
+    @fs.write_file(
+      path, "{\"status\":\"passed\",\"revision\":\"stale-test-sentinel\"}\n",
+    )
+    let output = @shell.Cmd(
+      "moon",
+      ["run", "scripts/acceptance.mbtx", "--"] + arguments,
+    ).output()
+    guard output.exit_code() != 0 &&
+      !@fs.exists(path) &&
+      (
+        output.stderr().contains("Usage:") ||
+        output.stderr().contains("Choose only one")
+      ) else {
+      fail(
+        "Invalid acceptance arguments retained stale success evidence or failed without an actionable diagnostic",
+      )
+    }
+  }
+  println(
+    "Acceptance guards rejected invalid controls and removed stale evidence.",
+  )
+}

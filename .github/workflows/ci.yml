@@ -27,12 +27,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: moon version --all
       - run: moon update
-      - run: moon fmt
-      - run: moon fmt scripts/verify.mbtx
-      - run: git diff --exit-code
-      - run: moon info --target all
-      - run: git diff --exit-code
-      - run: moon check --target all --deny-warn
-      - run: moon test --target all --deny-warn
-      - name: Verify real-data CLI result and core targets
-        run: moon run scripts/verify.mbtx -- --e2e-only
+      - name: Reject invalid acceptance controls and stale success evidence
+        run: moon run scripts/check-acceptance-guards.mbtx
+      - name: Build, test, reproduce workflows and verify archive adoption
+        run: moon run scripts/acceptance.mbtx
+      - name: Upload revision-bound acceptance evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: acceptance-${{ matrix.os }}
+          path: _build/acceptance.json
+          if-no-files-found: error

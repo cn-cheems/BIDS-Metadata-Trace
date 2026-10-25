@@ -72,6 +72,8 @@ Every numeric token is explicitly retained, including `-0`, large integers, deci
 
 ## Verification
 
+For the complete reproducible gate and three user workflows, see [acceptance](docs/acceptance.md). `moon run scripts/acceptance.mbtx` checks formatting/interfaces, strict compilation, explicit builds, actual tests, CLI behavior and archive-based consumers; success records the revision and actual target coverage in `_build/acceptance.json`. Publication remains deferred.
+
 ```sh
 moon fmt
 moon fmt scripts/verify.mbtx
@@ -86,7 +88,7 @@ Tests cover inheritance, source histories, ambiguity, scope errors, numeric pres
 
 Multi-subject/session validation: [ds006 fixture and reproduction steps](examples/ds006/SOURCE.md) exercise actual upstream paths and task metadata across two subjects/two sessions, with a clearly synthetic session override, scoped release impact and offline bundle replay. The suite also runs a deterministic 1,000-scan synthetic cohort regression; this is a correctness check, not a performance claim.
 
-Implemented: inheritance/provenance, recoverable batch audit, snapshot impact comparison, policy-based release checks, directory discovery with an explicit inventory report, single-source/coordinated multi-source edit planning, atomic source inventory planning, replayable review bundles, source coverage, exact-value cohort summaries, CSV review export, project-specific metadata expectation checks and entity-based scan selection. Next: additional raw-data profiles backed by specification and fixtures. Planned capabilities require separate implementation. Full BIDS validation is not implemented.
+Implemented: inheritance/provenance, recoverable batch audit, snapshot impact comparison, policy-based release checks, directory discovery with an explicit inventory report, single-source/coordinated multi-source edits, scan/source/combined inventory planning, proven redundant override pruning, replayable review bundles, source coverage, exact-value summaries and grouped consistency, CSV review export, metadata/acquisition expectation checks and filename/metadata selection. Local package adoption and a reproducible acceptance gate are implemented. Mooncakes publication and registry-installed consumer validation await owner instruction. Additional raw-data profiles remain future work backed by specification and fixtures; full BIDS validation is not implemented.
 
 ## Batch review example
 
