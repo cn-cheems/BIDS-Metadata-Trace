@@ -9,6 +9,10 @@ import {
 
 ///|
 async fn clean_review_directory(root : String) -> Unit {
+  // Error defers may run after normal cleanup; retain the original failure.
+  if !@fs.exists(root) {
+    return
+  }
   let absolute = @fs.realpath(root)
   let normalized = absolute.replace_all(old="\\", new="/")
   guard normalized.split("/").last().unwrap().has_prefix("bids-trace-review.") else {
@@ -523,7 +527,128 @@ async fn main {
   verify_metadata_filter(env)
   verify_scan_changes(env)
   verify_acquisition_rules(env)
+  verify_session_cohort(env)
   println("Verified core targets and real-data Wasm CLI.")
+}
+
+///|
+async fn verify_session_cohort(env : Map[String, String]) -> Unit {
+  let root = @fs.tmpdir(prefix="bids-trace-review")
+  errdefer clean_review_directory(root)
+  let manifest = "examples/ds006/manifest.json"
+  let audit = @shell.Cmd(
+    "moon",
+    ["run", "cmd/main", "--", "audit", manifest],
+    env~,
+  ).output()
+  audit.check()
+  guard @json.parse(audit.stdout())
+    is { "error_count": Number(0.0, ..), "entries": Array(entries), .. } &&
+    entries.length() == 4 else {
+    fail("ds006 must resolve all four independently recorded scan paths.")
+  }
+  for entry in entries {
+    guard entry
+      is {
+        "result": {
+          "metadata": {
+            "RepetitionTime": Number(2.0, ..),
+            "TaskName": String(
+              "living-nonliving decision with plain or mirror-reversed text"
+            ),
+            ..
+          },
+          "fields": {
+            "RepetitionTime": Array(
+              [
+                {
+                  "path": String(
+                    "task-livingnonlivingdecisionwithplainormirrorreversedtext_bold.json"
+                  ),
+                  ..
+                },
+              ]
+            ),
+            ..
+          },
+          ..
+        },
+        ..
+      } else {
+      fail(
+        "ds006 effective values or winning source disagree with upstream metadata.",
+      )
+    }
+  }
+  let candidate = root + "/candidate.json"
+  let exported = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--", "plan-changes", manifest, "examples/ds006/post-session-changes.json",
+      "--manifest-only",
+    ],
+    env~,
+  ).output()
+  exported.check()
+  @fs.write_file(candidate, exported.stdout())
+  let impact = @shell.Cmd(
+    "moon",
+    ["run", "cmd/main", "--", "check", manifest, candidate, "--effective-only"],
+    env~,
+  ).output()
+  guard impact.exit_code() == 1 &&
+    @json.parse(impact.stdout())
+    is {
+      "decision": String("changes_detected"),
+      "affected_paths": Array([String(affected)]),
+      ..
+    } &&
+    affected.has_prefix("sub-01/ses-post/") else {
+    fail("A subject/session override must affect only its selected scan.")
+  }
+  let consistency = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--", "consistency", candidate, "examples/ds006/consistency.json",
+    ],
+    env~,
+  ).output()
+  guard consistency.exit_code() == 1 &&
+    @json.parse(consistency.stdout())
+    is {
+      "decision": String("violations"),
+      "violation_count": Number(1.0, ..),
+      ..
+    } else {
+    fail("The cross-session RT mismatch must remain a failing review.")
+  }
+  let capture = @shell.Cmd(
+    "moon",
+    ["run", "cmd/main", "--", "bundle", manifest, candidate, "--effective-only"],
+    env~,
+  ).output()
+  capture.check()
+  let bundle = root + "/bundle.json"
+  @fs.write_file(bundle, capture.stdout())
+  let replay = @shell.Cmd(
+    "moon",
+    ["run", "cmd/main", "--", "replay", bundle],
+    env~,
+  ).output()
+  replay.check()
+  guard @json.parse(replay.stdout())
+    is { "decision": String("changes_detected"), .. } else {
+    fail("Session review replay lost its failing release decision.")
+  }
+  let recovered = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--", "consistency", manifest, "examples/ds006/consistency.json",
+    ],
+    env~,
+  ).output()
+  recovered.check()
+  clean_review_directory(root)
 }
 
 ///|

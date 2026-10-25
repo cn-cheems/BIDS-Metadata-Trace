@@ -1,0 +1,15 @@
+{
+  "files": [
+    "sub-01/ses-pre/func/sub-01_ses-pre_task-livingnonlivingdecisionwithplainormirrorreversedtext_run-01_bold.nii.gz",
+    "sub-01/ses-post/func/sub-01_ses-post_task-livingnonlivingdecisionwithplainormirrorreversedtext_run-01_bold.nii.gz",
+    "sub-02/ses-pre/func/sub-02_ses-pre_task-livingnonlivingdecisionwithplainormirrorreversedtext_run-01_bold.nii.gz",
+    "sub-02/ses-post/func/sub-02_ses-post_task-livingnonlivingdecisionwithplainormirrorreversedtext_run-01_bold.nii.gz"
+  ],
+  "sidecars": [{
+    "path": "task-livingnonlivingdecisionwithplainormirrorreversedtext_bold.json",
+    "metadata": {
+      "RepetitionTime": 2.0,
+      "TaskName": "living-nonliving decision with plain or mirror-reversed text"
+    }
+  }]
+}

@@ -82,6 +82,8 @@ Tests cover inheritance, source histories, ambiguity, scope errors, numeric pres
 
 ## Roadmap
 
+Multi-subject/session validation: [ds006 fixture and reproduction steps](examples/ds006/SOURCE.md) exercise actual upstream paths and task metadata across two subjects/two sessions, with a clearly synthetic session override, scoped release impact and offline bundle replay. The suite also runs a deterministic 1,000-scan synthetic cohort regression; this is a correctness check, not a performance claim.
+
 Implemented: inheritance/provenance, recoverable batch audit, snapshot impact comparison, policy-based release checks, directory discovery with an explicit inventory report, single-source/coordinated multi-source edit planning, atomic source inventory planning, replayable review bundles, source coverage, exact-value cohort summaries, CSV review export, project-specific metadata expectation checks and entity-based scan selection. Next: additional raw-data profiles backed by specification and fixtures. Planned capabilities require separate implementation. Full BIDS validation is not implemented.
 
 ## Batch review example
