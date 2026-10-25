@@ -1,0 +1,7 @@
+# This replaces .gitignore for package selection; keep cache exclusions explicit.
+/_build/
+/_moon/
+/.mooncakes/
+/scripts/
+/examples/consumer/
+# Include all fixtures, source/license notes, public docs and library/CLI sources.

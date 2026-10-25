@@ -1,0 +1,123 @@
+///|
+import {
+  "moonbitlang/async@0.22.4",
+  "moonbitlang/async@0.22.4/fs",
+  "moonbitlang/async@0.22.4/shell",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+async fn package_cleanup(root : String) -> Unit {
+  if !@fs.exists(root) {
+    return
+  }
+  let absolute = @fs.realpath(root)
+  guard absolute
+    .replace_all(old="\\", new="/")
+    .split("/")
+    .last()
+    .unwrap()
+    .has_prefix("bids-trace-package.") else {
+    fail("Refusing cleanup outside package-test temporary directory")
+  }
+  @fs.rmdir(absolute, recursive=true)
+}
+
+///|
+async fn package_command(command : @shell.Cmd) -> String {
+  let output = command.output()
+  guard output.exit_code() == 0 else {
+    fail("Package/consumer verification command failed:\n" + output.stderr())
+  }
+  output.stdout()
+}
+
+///|
+async fn main {
+  let args = @env.args()[1:].to_owned()
+  guard args == [] || args == ["--portable-only"] || args == ["--native-only"] else {
+    fail(
+      "Usage: moon run scripts/package-check.mbtx -- [--portable-only|--native-only]",
+    )
+  }
+  let packaged = @shell.Cmd("moon", ["package", "--frozen", "--list"]).output()
+  guard packaged.exit_code() == 0 else {
+    fail("Packaging failed:\n" + packaged.stderr())
+  }
+  let listing = packaged.stdout() + "\n" + packaged.stderr()
+  let files = listing
+    .replace_all(old="\\", new="/")
+    .split("\n")
+    .map(line => line.trim().to_owned())
+    .collect()
+  for
+    required in [
+      "moon.mod", "moon.pkg", "pkg.generated.mbti", "LICENSE", "NOTICE", "PROVENANCE.md",
+      "README.md", "resolve.mbt", "cmd/main/main.mbt", "examples/ds006/SOURCE.md",
+    ] {
+    guard files.contains(required) else {
+      fail("Release archive omits required file: " + required)
+    }
+  }
+  for file in files {
+    if [
+        "_build/", "_moon/", ".mooncakes/", ".git/", "scripts/", "examples/consumer/",
+      ]
+      .iter()
+      .any(prefix => file.has_prefix(prefix)) {
+      fail("Release archive contains excluded development/cache path: " + file)
+    }
+  }
+  let archive = @fs.realpath(
+    "_build/publish/cn-cheems-bids_metadata_trace-0.1.0.zip",
+  )
+  let root = @fs.tmpdir(prefix="bids-trace-package")
+  errdefer package_cleanup(root)
+  let library = root + "/library"
+  let consumer = root + "/consumer"
+  @fs.mkdir(library)
+  @fs.mkdir(consumer)
+  if @env.get_env_var("OS") == Some("Windows_NT") {
+    ignore(package_command(@shell.Cmd("tar", ["-xf", archive, "-C", library])))
+  } else {
+    ignore(package_command(@shell.Cmd("unzip", ["-q", archive, "-d", library])))
+  }
+  for name in ["moon.mod", "moon.pkg", "main.mbt"] {
+    @fs.write_file(
+      consumer + "/" + name,
+      @fs.read_file("examples/consumer/" + name),
+    )
+  }
+  @fs.write_file(root + "/moon.work", "members = [\"library\", \"consumer\"]\n")
+  let targets = if args == ["--native-only"] {
+    ["native"]
+  } else if args == ["--portable-only"] {
+    ["wasm", "wasm-gc", "js"]
+  } else {
+    ["wasm", "wasm-gc", "js", "native"]
+  }
+  for target in targets {
+    let output = package_command(
+      @shell.Cmd(
+        "moon",
+        ["run", "--target", target, "--deny-warn", "."],
+        cwd=consumer,
+      ),
+    )
+    guard @json.parse(output)
+      is {
+        "consumer": String("passed"),
+        "changed_scans": Number(1.0, ..),
+        "scans": Number(2.0, ..),
+        ..
+      } else {
+      fail("Unexpected consumer output on " + target)
+    }
+    println("Archive consumer passed: " + target)
+  }
+  package_cleanup(root)
+  println(
+    "Verified local release archive; no registry publication was attempted.",
+  )
+}

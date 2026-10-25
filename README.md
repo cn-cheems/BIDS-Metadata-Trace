@@ -33,6 +33,8 @@ This second manifest is an authored illustration, not an OpenNeuro fixture. Unkn
 
 Import `cn-cheems/bids_metadata_trace` as `@trace` in your `moon.pkg`. This module is not yet published to Mooncakes; use a local/path dependency or this repository when evaluating it.
 
+For a reproducible local package check, see [archive and independent consumer verification](docs/packaging.md). The check extracts the actual release ZIP and runs a separate module against its public API; it never publishes to Mooncakes.
+
 - `DatasetIndex::from_manifest(files, sidecars)` consumes relative data paths and `SidecarInput::new(path, json_text)` sources.
 - `DatasetIndex::from_json(text)` reads the strict manifest above.
 - `index.resolve(path)` returns effective metadata or a `TraceError(Diagnostic)`.
