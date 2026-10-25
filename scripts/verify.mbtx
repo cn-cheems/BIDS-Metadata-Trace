@@ -528,6 +528,41 @@ async fn main {
   verify_scan_changes(env)
   verify_acquisition_rules(env)
   verify_session_cohort(env)
+  let benchmark = @shell.Cmd(
+    "moon",
+    ["run", "--release", "cmd/benchmark", "--", "audit", "scoped", "100", "3"],
+    env~,
+  ).output()
+  benchmark.check()
+  guard @json.parse(benchmark.stdout())
+    is {
+      "phase": String("audit"),
+      "shape": String("scoped"),
+      "scans": Number(100.0, ..),
+      "sources": Number(76.0, ..),
+      "checksum": String("300"),
+      "samples_us": Array(samples),
+      ..
+    } &&
+    samples.length() == 3 else {
+    fail("Benchmark smoke did not execute/consume three full scoped audits")
+  }
+  let invalid_benchmark = @shell.Cmd(
+    "moon",
+    ["run", "--release", "cmd/benchmark", "--", "audit", "scoped", "0", "3"],
+    env~,
+  ).output()
+  guard invalid_benchmark.exit_code() != 0 &&
+    @json.parse(invalid_benchmark.stdout())
+    is {
+      "status": String("error"),
+      "code": String("invalid_benchmark_arguments"),
+      "message": String(message),
+      ..
+    } &&
+    message.contains("SCANS must be") else {
+    fail("Benchmark must reject invalid bounds without a success result")
+  }
   println("Verified core targets and real-data Wasm CLI.")
 }
 

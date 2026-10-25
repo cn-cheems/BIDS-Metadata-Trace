@@ -72,6 +72,8 @@ Every numeric token is explicitly retained, including `-0`, large integers, deci
 
 ## Verification
 
+Performance experiments are separate from correctness gates: see [workloads, release timing and RSS methodology](docs/performance.md). CI smoke-checks execution and invalid inputs, without enforcing unstable timing thresholds.
+
 For the complete reproducible gate and three user workflows, see [acceptance](docs/acceptance.md). `moon run scripts/acceptance.mbtx` checks formatting/interfaces, strict compilation, explicit builds, actual tests, CLI behavior and archive-based consumers; success records the revision and actual target coverage in `_build/acceptance.json`. Publication remains deferred.
 
 ```sh

@@ -1,0 +1,128 @@
+///|
+import {
+  "moonbitlang/async@0.22.4",
+  "moonbitlang/async@0.22.4/fs",
+  "moonbitlang/async@0.22.4/shell",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+}
+
+///|
+async fn performance_command(command : @shell.Cmd) -> String {
+  let output = command.output(max_output_bytes=67108864)
+  guard output.exit_code() == 0 else {
+    fail("Benchmark process failed:\n" + output.stderr())
+  }
+  output.stdout()
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  guard args.length() == 3 || (args.length() == 4 && args[3] == "--quick") else {
+    fail(
+      "Usage: moon run scripts/benchmark.mbtx -- NATIVE_BINARY OUTPUT_DIRECTORY [--quick]",
+    )
+  }
+  let os = performance_command(@shell.Cmd("uname", ["-s"]))
+  guard os.trim() == "Linux" && @fs.exists("/usr/bin/time") else {
+    fail(
+      "RSS collection requires Linux /usr/bin/time; run the benchmark executable directly for portable timing only",
+    )
+  }
+  let binary = @fs.realpath(args[1])
+  let directory = args[2]
+  @fs.mkdir(directory, recursive=true, allow_exist=true)
+  // A failed collection cannot leave an old summary looking like this run.
+  if @fs.exists(directory + "/summary.json") {
+    @fs.remove(directory + "/summary.json")
+  }
+  let sizes = if args.length() == 4 { [100] } else { [100, 1000, 5000] }
+  let results : Array[Json] = []
+  for count in sizes {
+    for shape in ["sparse", "scoped", "root-heavy"] {
+      for phase in ["build", "audit", "compare", "serialize"] {
+        let stem = directory +
+          "/" +
+          phase +
+          "-" +
+          shape +
+          "-" +
+          count.to_string()
+        let result = performance_command(
+          @shell.Cmd("/usr/bin/time", [
+            "-f",
+            "%M",
+            "-o",
+            stem + ".rss-kib",
+            binary,
+            phase,
+            shape,
+            count.to_string(),
+            "7",
+          ]),
+        )
+        let value = @json.parse(result)
+        guard value is Object(fields) &&
+          fields.get("phase") == Some(Json::string(phase)) &&
+          fields.get("shape") == Some(Json::string(shape)) else {
+          fail("Benchmark returned the wrong workload")
+        }
+        let rss = @string.parse_int(
+          @fs.read_file(stem + ".rss-kib").text().trim(),
+        )
+        guard rss > 0 else { fail("Invalid peak RSS from Linux time") }
+        fields["process_peak_rss_kib"] = Json::number(rss.to_double())
+        results.push(Json::object(fields))
+        @fs.write_file(
+          stem + ".json",
+          Json::object(fields).stringify(indent=2) + "\n",
+        )
+        println(phase + " " + shape + " " + count.to_string())
+      }
+      let evidence = performance_command(
+        @shell.Cmd(binary, ["evidence", shape, count.to_string(), "3"]),
+      )
+      @fs.write_file(
+        directory + "/evidence-" + shape + "-" + count.to_string() + ".json",
+        evidence,
+      )
+    }
+  }
+  let revision = performance_command(@shell.Cmd("git", ["rev-parse", "HEAD"]))
+  let status = performance_command(@shell.Cmd("git", ["status", "--porcelain"]))
+  let digest = performance_command(@shell.Cmd("sha256sum", [binary]))
+  let platform = performance_command(@shell.Cmd("uname", ["-smr"]))
+  let version = performance_command(@shell.Cmd("moon", ["version", "--all"]))
+  let cpuinfo = @fs.read_file("/proc/cpuinfo").text()
+  let mut cpu = "unavailable"
+  for line in cpuinfo.split("\n") {
+    if line.has_prefix("model name") {
+      cpu = line.trim().to_owned()
+      break
+    }
+  }
+  let summary = Json::object({
+    "format": Json::string("bids-trace/performance-v1"),
+    "revision": Json::string(revision.trim().to_owned()),
+    "working_tree": Json::boolean(!status.trim().is_empty()),
+    "platform": Json::string(platform.trim().to_owned()),
+    "cpu": Json::string(cpu),
+    "toolchain": Json::string(version),
+    "binary_sha256": Json::string(digest.split(" ").next().unwrap().to_owned()),
+    "samples_per_case": Json::number(7.0),
+    "untimed_warmups": Json::number(1.0),
+    "profile_requirement": Json::string(
+      "Caller supplies a moon build --release native executable; compilation is excluded",
+    ),
+    "rss_scope": Json::string(
+      "Linux whole-process peak, including fixture setup, warmup and all samples; not per-index allocation",
+    ),
+    "results": Json::array(results),
+  })
+  @fs.write_file(
+    directory + "/summary.json",
+    summary.stringify(indent=2) + "\n",
+  )
+}
