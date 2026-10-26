@@ -10,89 +10,157 @@ import {
 
 ///|
 async fn performance_command(command : @shell.Cmd) -> String {
+  performance_output(command).stdout()
+}
+
+///|
+async fn performance_output(command : @shell.Cmd) -> @shell.Output {
   let output = command.output(max_output_bytes=67108864)
   guard output.exit_code() == 0 else {
     fail("Benchmark process failed:\n" + output.stderr())
   }
-  output.stdout()
+  output
+}
+
+///|
+async fn measure_case(
+  binary : String,
+  stem : String,
+  phase : String,
+  shape : String,
+  count : Int32,
+) -> Json {
+  let result = performance_command(
+    @shell.Cmd("/usr/bin/time", [
+      "-f",
+      "%M",
+      "-o",
+      stem + ".rss-kib",
+      binary,
+      phase,
+      shape,
+      count.to_string(),
+      "7",
+    ]),
+  )
+  guard @json.parse(result) is Object(fields) &&
+    fields.get("phase") == Some(Json::string(phase)) &&
+    fields.get("shape") == Some(Json::string(shape)) &&
+    fields.get("scans") == Some(Json::number(count.to_double())) else {
+    fail("Benchmark returned the wrong workload")
+  }
+  let rss = @string.parse_int(@fs.read_file(stem + ".rss-kib").text().trim())
+  guard rss > 0 else { fail("Invalid peak RSS from Linux time") }
+  fields["process_peak_rss_kib"] = Json::number(rss.to_double())
+  let value = Json::object(fields)
+  @fs.write_file(stem + ".json", value.stringify(indent=2) + "\n")
+  value
 }
 
 ///|
 async fn main {
   let args = @env.args()
-  guard args.length() == 3 || (args.length() == 4 && args[3] == "--quick") else {
+  guard args.length() >= 3 else {
     fail(
-      "Usage: moon run scripts/benchmark.mbtx -- NATIVE_BINARY OUTPUT_DIRECTORY [--quick]",
+      "Usage: benchmark.mbtx BINARY OUTPUT_DIRECTORY [--compare-to BASELINE_BINARY] [--quick]",
     )
+  }
+  let flags = args[3:].to_owned()
+  let baseline : String? = match flags {
+    [] | ["--quick"] => None
+    ["--compare-to", path] | ["--compare-to", path, "--quick"] =>
+      Some(@fs.realpath(path))
+    _ => {
+      fail("Unknown, duplicate or misplaced benchmark collector options")
+      None
+    }
   }
   let os = performance_command(@shell.Cmd("uname", ["-s"]))
   guard os.trim() == "Linux" && @fs.exists("/usr/bin/time") else {
     fail(
-      "RSS collection requires Linux /usr/bin/time; run the benchmark executable directly for portable timing only",
+      "RSS collection requires Linux /usr/bin/time; use the executable directly for portable timing",
     )
   }
   let binary = @fs.realpath(args[1])
   let directory = args[2]
   @fs.mkdir(directory, recursive=true, allow_exist=true)
-  // A failed collection cannot leave an old summary looking like this run.
   if @fs.exists(directory + "/summary.json") {
     @fs.remove(directory + "/summary.json")
   }
-  let sizes = if args.length() == 4 { [100] } else { [100, 1000, 5000] }
+  let sizes = if flags.contains("--quick") { [100] } else { [100, 1000, 5000] }
   let results : Array[Json] = []
+  let baseline_results : Array[Json] = []
+  let mut ordinal = 0
+  let mut evidence_pairs = 0
   for count in sizes {
     for shape in ["sparse", "scoped", "root-heavy"] {
       for phase in ["build", "audit", "compare", "serialize"] {
-        let stem = directory +
-          "/" +
-          phase +
-          "-" +
-          shape +
-          "-" +
-          count.to_string()
-        let result = performance_command(
-          @shell.Cmd("/usr/bin/time", [
-            "-f",
-            "%M",
-            "-o",
-            stem + ".rss-kib",
-            binary,
-            phase,
-            shape,
-            count.to_string(),
-            "7",
-          ]),
-        )
-        let value = @json.parse(result)
-        guard value is Object(fields) &&
-          fields.get("phase") == Some(Json::string(phase)) &&
-          fields.get("shape") == Some(Json::string(shape)) else {
-          fail("Benchmark returned the wrong workload")
+        let order = match baseline {
+          None => [("current", binary)]
+          Some(reference) =>
+            if ordinal % 2 == 0 {
+              [("baseline", reference), ("current", binary)]
+            } else {
+              [("current", binary), ("baseline", reference)]
+            }
         }
-        let rss = @string.parse_int(
-          @fs.read_file(stem + ".rss-kib").text().trim(),
-        )
-        guard rss > 0 else { fail("Invalid peak RSS from Linux time") }
-        fields["process_peak_rss_kib"] = Json::number(rss.to_double())
-        results.push(Json::object(fields))
-        @fs.write_file(
-          stem + ".json",
-          Json::object(fields).stringify(indent=2) + "\n",
-        )
+        for (label, executable) in order {
+          let stem = directory +
+            "/" +
+            label +
+            "-" +
+            phase +
+            "-" +
+            shape +
+            "-" +
+            count.to_string()
+          let value = measure_case(executable, stem, phase, shape, count)
+          if label == "baseline" {
+            baseline_results.push(value)
+          } else {
+            results.push(value)
+          }
+        }
+        ordinal += 1
         println(phase + " " + shape + " " + count.to_string())
       }
-      let evidence = performance_command(
+      let evidence = performance_output(
         @shell.Cmd(binary, ["evidence", shape, count.to_string(), "3"]),
       )
       @fs.write_file(
         directory + "/evidence-" + shape + "-" + count.to_string() + ".json",
-        evidence,
+        evidence.stdout(),
       )
+      if baseline is Some(reference) {
+        let expected = performance_output(
+          @shell.Cmd(reference, ["evidence", shape, count.to_string(), "3"]),
+        )
+        guard expected.stdout_bytes() == evidence.stdout_bytes() else {
+          fail(
+            "Canonical manifest/audit/impact bytes changed for " +
+            shape +
+            " " +
+            count.to_string(),
+          )
+        }
+        evidence_pairs += 1
+      }
     }
   }
   let revision = performance_command(@shell.Cmd("git", ["rev-parse", "HEAD"]))
   let status = performance_command(@shell.Cmd("git", ["status", "--porcelain"]))
   let digest = performance_command(@shell.Cmd("sha256sum", [binary]))
+  let baseline_digest = match baseline {
+    Some(reference) =>
+      Json::string(
+        performance_command(@shell.Cmd("sha256sum", [reference]))
+        .split(" ")
+        .next()
+        .unwrap()
+        .to_owned(),
+      )
+    None => Json::null()
+  }
   let platform = performance_command(@shell.Cmd("uname", ["-smr"]))
   let version = performance_command(@shell.Cmd("moon", ["version", "--all"]))
   let cpuinfo = @fs.read_file("/proc/cpuinfo").text()
@@ -111,6 +179,12 @@ async fn main {
     "cpu": Json::string(cpu),
     "toolchain": Json::string(version),
     "binary_sha256": Json::string(digest.split(" ").next().unwrap().to_owned()),
+    "baseline_binary_sha256": baseline_digest,
+    "baseline_results": Json::array(baseline_results),
+    "byte_identical_evidence_pairs": Json::number(evidence_pairs.to_double()),
+    "pair_order": Json::string(
+      "Alternate baseline/current order per case; each process has its own warmup and seven samples",
+    ),
     "samples_per_case": Json::number(7.0),
     "untimed_warmups": Json::number(1.0),
     "profile_requirement": Json::string(

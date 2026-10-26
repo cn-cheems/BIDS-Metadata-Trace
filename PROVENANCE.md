@@ -56,6 +56,8 @@ Scan selection and authored tests are Apache-2.0 project code. `examples/selecti
 
 ## 2026-10-25 performance harness
 
+The 2026-10-26 lookup optimizer and paired collector are independently authored Apache-2.0 changes. The deliberately linear white-box test oracle is adapted from this repository's own pre-index resolver at `2649641` (Apache-2.0), retaining the old candidate selection and diagnostic semantics. No external resolver implementation was copied. Paired measurements use synthetic workloads, not participant records, and do not imply third-party performance superiority.
+
 The benchmark executable, workload generators, measurement collector and benchmark tests are independently authored Apache-2.0 project code. All benchmark subjects, sessions, task selectors and metadata are synthetic; no participant records or external benchmark suite were copied. Timing uses the installed MoonBit core bench monotonic clock API (verified in core generated interfaces/source); Linux peak RSS is collected by the system `/usr/bin/time` utility, which is not redistributed. Reports document workload, host, raw samples, toolchain, binary digest and whole-process RSS scope. These observations do not establish ecosystem uniqueness or cross-library/cross-platform superiority.
 
 ## 2026-10-25 multi-session validation

@@ -60,7 +60,16 @@ pub fn DatasetIndex::from_manifest(
       depth
     }
   })
-  let index : DatasetIndex = { files: data, sidecars: metadata, }
+  let file_positions : Map[String, Int32] = Map([])
+  for position, file in data {
+    file_positions[file.path] = position
+  }
+  let index : DatasetIndex = {
+    files: data,
+    sidecars: metadata,
+    file_positions,
+    source_buckets: make_source_buckets(metadata),
+  }
   // Every accepted snapshot must be reloadable through the same public API.
   if index.to_manifest_json().length() > 2097152 {
     reject(
@@ -82,16 +91,14 @@ pub fn DatasetIndex::resolve(
   self : DatasetIndex,
   data_path : String,
 ) -> ResolvedMetadata raise TraceError {
-  guard self.files.search_by(file => file.path == data_path) is Some(index) else {
+  guard self.file_positions.get(data_path) is Some(index) else {
     reject(
       "unknown_data_path", data_path, "Data path is absent from the manifest; add it before querying.",
     )
     return { path: data_path, values: Map([]), origins: Map([]), applied: [], }
   }
   let data = self.files[index]
-  let candidates = self.sidecars.filter(sidecar => {
-    applies(sidecar.selector, data)
-  })
+  let candidates = self.matching_sources(data)
   let at_depth : Map[Int32, Array[String]] = Map([])
   for sidecar in candidates {
     let level = sidecar.selector.depth

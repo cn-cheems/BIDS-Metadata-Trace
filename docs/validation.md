@@ -1,5 +1,9 @@
 # Validation evidence
 
+## Indexed resolution — 2026-10-26
+
+Formatting, generated interfaces (unchanged public API), strict all-target checking, end-to-end workflows and actual execution passed: Wasm 189 tests; Wasm-GC, JavaScript and WSL Native 183 each. Six index regression tests include a 48-layout byte-for-byte oracle comparison, source ordering/ambiguity, all nine entity discriminators, exact query spellings, immutable plan/reload behavior and unmatched-source invariance across the small-set threshold. The paired Native release collector executed 36 cases for each of the frozen baseline and current binaries, with seven timed samples plus warmup per case, recording whole-process peak RSS. Nine complete manifest/audit/impact output pairs were byte-identical. The raw paired report and performance document include improvements and construction/memory costs. Performance thresholds are not used as CI pass criteria. This revision's remote result is checked after push; Mooncakes publication remains deferred.
+
 ## Performance measurement foundation — 2026-10-25
 
 The new benchmark workload/phase checks passed with 183 Wasm tests and 177 each on Wasm-GC, JavaScript and actual WSL Native execution. Strict all-target checking, generated interfaces and existing end-to-end workflows passed. Release-mode invalid arguments emit one structured diagnostic and fail without a timing-success report. Linux Native release measurements collected all 36 cases (3 scales × 3 source layouts × 4 phases), seven measured samples after one warmup, plus whole-process peak RSS and complete semantic evidence. No resolver/index implementation changed in this foundation commit. The previous standalone-script dependency warning remains documented; strict project checks pass.

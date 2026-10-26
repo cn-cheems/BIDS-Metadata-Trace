@@ -74,6 +74,8 @@ Every numeric token is explicitly retained, including `-0`, large integers, deci
 
 Performance experiments are separate from correctness gates: see [workloads, release timing and RSS methodology](docs/performance.md). CI smoke-checks execution and invalid inputs, without enforcing unstable timing thresholds.
 
+Path/source lookup now uses internal indexes while preserving the public API and deterministic reports. The documented paired Native measurements include full raw data, output-equivalence checks and construction/memory regressions; gains depend on source layout and are not cross-platform guarantees.
+
 For the complete reproducible gate and three user workflows, see [acceptance](docs/acceptance.md). `moon run scripts/acceptance.mbtx` checks formatting/interfaces, strict compilation, explicit builds, actual tests, CLI behavior and archive-based consumers; success records the revision and actual target coverage in `_build/acceptance.json`. Publication remains deferred.
 
 ```sh

@@ -56,6 +56,8 @@ priv struct Sidecar {
 pub struct DatasetIndex {
   priv files : Array[Selector]
   priv sidecars : Array[Sidecar]
+  priv file_positions : Map[String, Int32]
+  priv source_buckets : Map[String, Map[String, SourceBucket]]
 }
 
 ///|
