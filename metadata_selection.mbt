@@ -5,6 +5,7 @@ pub struct MetadataQuery {
   priv absent : Array[String]
   priv equals : Map[String, Array[Json]]
   priv fields : Array[String]
+  priv numeric : NumericRules?
 }
 
 ///|
@@ -13,11 +14,15 @@ fn MetadataQuery::query_value(self : MetadataQuery) -> Json {
   for field in sorted_keys(self.equals) {
     equals[field] = Json::array(self.equals[field])
   }
-  Json::object({
+  let document : Map[String, Json] = {
     "present": Json::array(self.present.map(Json::string)),
     "absent": Json::array(self.absent.map(Json::string)),
     "equals": Json::object(equals),
-  })
+  }
+  if self.numeric is Some(rules) {
+    document["numeric"] = rules.rules_value()
+  }
+  Json::object(document)
 }
 
 ///|
@@ -39,9 +44,9 @@ pub fn MetadataQuery::from_json(
     abort("reject raises")
   }
   for key in sorted_keys(input) {
-    if !["present", "absent", "equals"].contains(key) {
+    if !["present", "absent", "equals", "numeric"].contains(key) {
       reject(
-        "unknown_metadata_query_field", key, "Use only present, absent and equals controls.",
+        "unknown_metadata_query_field", key, "Use only present, absent, equals and optional numeric controls.",
       )
     }
   }
@@ -77,26 +82,49 @@ pub fn MetadataQuery::from_json(
   for field in expected.fields {
     all[field] = true
   }
+  let numeric = input
+    .get("numeric")
+    .map(value => NumericRules::from_json(canonical_json(value)))
+  if numeric is Some(rules) {
+    for rule in rules.fields {
+      all[rule.field] = true
+    }
+  }
   for field in missing {
     if all.contains(field) {
       reject(
-        "conflicting_metadata_predicate", field, "A field cannot be both absent and present/equal; remove the contradictory predicate.",
+        "conflicting_metadata_predicate", field, "A field cannot be both absent and present/equal/numeric; remove the contradictory predicate.",
       )
     }
     all[field] = true
   }
+  let legacy_fields = expected.fields + missing
+  legacy_fields.sort_by(lexical_compare)
   let query : MetadataQuery = {
     present: expected.required,
     absent: missing,
     equals: expected.allowed,
-    fields: review_fields(sorted_keys(all)),
+    fields: review_fields(legacy_fields),
+    numeric,
   }
+  ignore(review_fields(sorted_keys(all)))
   if query.to_json().length() > 2097152 {
     reject(
       "input_limit", "<metadata-query>", "Canonical metadata query exceeds 2,097,152 UTF-16 units.",
     )
   }
   query
+}
+
+///|
+/// Attach/replace numeric predicates. A field cannot be both absent and numeric.
+pub fn MetadataQuery::with_numeric(
+  self : MetadataQuery,
+  rules : NumericRules,
+) -> MetadataQuery raise TraceError {
+  guard self.query_value() is Object(fields) else { abort("object invariant") }
+  fields["numeric"] = rules.rules_value()
+  MetadataQuery::from_json(canonical_json(Json::object(fields)))
 }
 
 ///|
@@ -196,6 +224,13 @@ pub fn AuditReport::filter_metadata(
           }
           Json::object(check)
         })
+        if query.numeric is Some(rules) {
+          let (numeric_checks, failed) = rules.evaluate(result)
+          item["numeric_checks"] = Json::array(numeric_checks)
+          if failed > 0 {
+            matches = false
+          }
+        }
         if matches {
           selected.push(entry.path)
           retained.push(entry)

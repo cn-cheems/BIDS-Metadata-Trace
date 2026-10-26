@@ -1,10 +1,11 @@
 ///|
 /// Project-specific whole-field expectations over effective inherited metadata.
-/// This is not a BIDS schema, unit validator or numeric tolerance engine.
+/// Optional numeric rules add exact decimal policy, without unit conversion.
 pub struct MetadataExpectations {
   priv required : Array[String]
   priv allowed : Map[String, Array[Json]]
   priv fields : Array[String]
+  priv numeric : NumericRules?
 }
 
 ///|
@@ -17,10 +18,14 @@ fn MetadataExpectations::expectations_value(
       allowed[field] = Json::array(values)
     }
   }
-  Json::object({
+  let document : Map[String, Json] = {
     "required": Json::array(self.required.map(Json::string)),
     "allowed": Json::object(allowed),
-  })
+  }
+  if self.numeric is Some(rules) {
+    document["numeric"] = rules.rules_value()
+  }
+  Json::object(document)
 }
 
 ///|
@@ -29,7 +34,7 @@ pub fn MetadataExpectations::to_json(self : MetadataExpectations) -> String {
 }
 
 ///|
-/// Strict {required:[fields],allowed:{field:[exact JSON choices]}}.
+/// Strict required/allowed controls, with optional numeric rules.
 /// Allowed-only fields may be absent; explicit null is a present value.
 pub fn MetadataExpectations::from_json(
   text : String,
@@ -42,9 +47,9 @@ pub fn MetadataExpectations::from_json(
     abort("reject raises")
   }
   for key in sorted_keys(input) {
-    if !["required", "allowed"].contains(key) {
+    if !["required", "allowed", "numeric"].contains(key) {
       reject(
-        "unknown_expectation_field", key, "Use only required and allowed controls.",
+        "unknown_expectation_field", key, "Use only required, allowed and optional numeric controls.",
       )
     }
   }
@@ -94,13 +99,40 @@ pub fn MetadataExpectations::from_json(
     allowed[field] = sorted_keys(tokens).map(token => tokens[token])
   }
   let fields = review_fields(sorted_keys(all))
-  let expectations : MetadataExpectations = { required, allowed, fields, }
+  let numeric = input
+    .get("numeric")
+    .map(value => NumericRules::from_json(canonical_json(value)))
+  if numeric is Some(rules) {
+    for rule in rules.fields {
+      all[rule.field] = true
+    }
+    ignore(review_fields(sorted_keys(all)))
+  }
+  let expectations : MetadataExpectations = {
+    required,
+    allowed,
+    fields,
+    numeric,
+  }
   if expectations.to_json().length() > 2097152 {
     reject(
       "input_limit", "<expectations>", "Canonical expectations exceed 2,097,152 UTF-16 units; reduce the review scope.",
     )
   }
   expectations
+}
+
+///|
+/// Attach/replace numeric policy, retaining existing exact-value expectations.
+pub fn MetadataExpectations::with_numeric(
+  self : MetadataExpectations,
+  rules : NumericRules,
+) -> MetadataExpectations raise TraceError {
+  guard self.expectations_value() is Object(fields) else {
+    abort("object invariant")
+  }
+  fields["numeric"] = rules.rules_value()
+  MetadataExpectations::from_json(canonical_json(Json::object(fields)))
 }
 
 ///|
@@ -129,7 +161,7 @@ pub fn ExpectationReport::decision(
 }
 
 ///|
-/// Counts failed field checks, including repeated query occurrences.
+/// Counts failed legacy fields plus numeric fields/relations, including repeats.
 pub fn ExpectationReport::violation_count(self : ExpectationReport) -> Int32 {
   self.violations
 }
@@ -217,6 +249,11 @@ pub fn AuditReport::check_expectations(
         document["status"] = Json::string("resolved")
         document["result"] = result.report_value()
         document["checks"] = Json::array(checks)
+        if expectations.numeric is Some(rules) {
+          let (numeric_checks, failed) = rules.evaluate(result)
+          violations += failed
+          document["numeric_checks"] = Json::array(numeric_checks)
+        }
       }
       _ => abort("AuditEntry invariant")
     }

@@ -1,0 +1,8 @@
+{
+  "required": ["TaskName"],
+  "allowed": {},
+  "numeric": {
+    "fields": {"RepetitionTime": {"type": "number", "gt": 0, "lt": 3}},
+    "relations": []
+  }
+}

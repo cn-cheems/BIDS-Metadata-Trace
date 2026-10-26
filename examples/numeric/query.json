@@ -1,0 +1,9 @@
+{
+  "present": ["TaskName"],
+  "absent": [],
+  "equals": {},
+  "numeric": {
+    "fields": {"RepetitionTime": {"type": "number", "gte": 2, "lte": 2e0}},
+    "relations": []
+  }
+}

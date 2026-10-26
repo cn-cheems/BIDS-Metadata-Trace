@@ -19,6 +19,11 @@ edits on the attributed real paths merge, export, resolve and replay, while
 inherited shadowing blocks the entire candidate. The archive consumer invokes
 the merge API as a downstream module.
 
+The [numeric policy workflow](numeric.md) runs through `scripts/verify-numeric.mbtx`:
+real-path interval checks, numeric filtering, scoped acquisition, synthetic array/
+relation checks, actionable rejection/retry and frozen full legacy reports.
+The archive consumer exercises both numeric composition methods.
+
 ## Three complete demonstrations
 
 | User/workflow | Reproduction | Expected evidence |

@@ -68,5 +68,24 @@ fn main raise {
     merge.impact().unwrap().error_count() == 0 else {
     fail("Merge dropped metadata or failed inheritance validation")
   }
+  let numeric = @trace.NumericRules::from_json(
+    "{\"fields\":{\"RepetitionTime\":{\"type\":\"number\",\"gt\":2,\"lte\":3}},\"relations\":[]}",
+  )
+  let query = @trace.MetadataQuery::from_json(
+    "{\"present\":[],\"absent\":[],\"equals\":{}}",
+  ).with_numeric(numeric)
+  guard merged.select_metadata(query).paths() == [post] else {
+    fail("Numeric predicates lost inherited session scope")
+  }
+  let expected = @trace.MetadataExpectations::from_json(
+    "{\"required\":[],\"allowed\":{}}",
+  ).with_numeric(
+    @trace.NumericRules::from_json(
+      "{\"fields\":{\"RepetitionTime\":{\"type\":\"number\",\"gt\":0,\"lte\":3}},\"relations\":[]}",
+    ),
+  )
+  guard merged.audit_all().check_expectations(expected).violation_count() == 0 else {
+    fail("Numeric expectations failed in independent archive consumer")
+  }
   println("{\"consumer\":\"passed\",\"changed_scans\":1,\"scans\":2}")
 }

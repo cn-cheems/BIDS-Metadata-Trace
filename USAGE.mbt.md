@@ -1,5 +1,30 @@
 # Executable library usage
 
+Numeric project policy compares decimal values while retaining original tokens
+and the exact-value semantics of other audit APIs.
+
+```mbt check
+///|
+test "typed numeric policy checks inherited intervals and selects a cohort" {
+  let p = "sub-01/func/sub-01_task-rest_bold.nii"
+  let index = @trace.DatasetIndex::from_manifest([p], [
+    @trace.SidecarInput::new("bold.json", "{\"RepetitionTime\":2.0}"),
+  ])
+  let rules = @trace.NumericRules::from_json(
+    "{\"fields\":{\"RepetitionTime\":{\"type\":\"number\",\"gte\":2,\"lte\":2e0}},\"relations\":[]}",
+  )
+  let expected = @trace.MetadataExpectations::from_json(
+    "{\"required\":[],\"allowed\":{}}",
+  ).with_numeric(rules)
+  assert_eq(index.audit_all().check_expectations(expected).violation_count(), 0)
+  let query = @trace.MetadataQuery::from_json(
+    "{\"present\":[],\"absent\":[],\"equals\":{}}",
+  ).with_numeric(rules)
+  assert_eq(index.select_metadata(query).paths(), [p])
+  assert_eq(index.resolve(p).to_json(), "{\"RepetitionTime\":2.0}")
+}
+```
+
 Concurrent edits can be merged and passed through the existing release workflow.
 
 ```mbt check

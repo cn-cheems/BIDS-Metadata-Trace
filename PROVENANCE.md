@@ -1,5 +1,15 @@
 # Sources, reuse and differentiation
 
+Exact numeric policy, private decimal comparison, rule compilation, inherited
+evidence reports and scalar/array/relation tests are independently authored
+Apache-2.0 work. The scaled-integer oracle uses exact small integer arithmetic;
+long-token vectors are authored tests, not a copied decimal test suite. The
+[numeric source notes](examples/numeric/SOURCE.md) attribute reused CC0 paths,
+synthetic mutations and full legacy outputs from this repository's prior
+Apache-2.0 commit. The [boundary review](docs/numeric.md#boundary-references-and-license)
+records generic schema projects as related work; no implementation or tests
+were copied from them and no ecosystem uniqueness is asserted.
+
 Three-way snapshot merge, its inheritance-conflict policy, scalar/interaction
 oracles, tests, CLI integration and examples are independently authored
 Apache-2.0 work. They reuse this repository's attributed CC0 ds000001 paths and

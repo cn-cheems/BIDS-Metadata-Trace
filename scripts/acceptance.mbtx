@@ -65,7 +65,7 @@ async fn main {
   ignore(
     acceptance_command([
       "fmt", "--check", "scripts/verify.mbtx", "scripts/package-check.mbtx", "scripts/acceptance.mbtx",
-      "scripts/check-acceptance-guards.mbtx", "scripts/benchmark.mbtx",
+      "scripts/check-acceptance-guards.mbtx", "scripts/benchmark.mbtx", "scripts/verify-numeric.mbtx",
     ]),
   )
   ignore(acceptance_command(["-C", "examples/consumer", "fmt", "--check"]))

@@ -1,0 +1,12 @@
+{
+  "required": ["TaskName"],
+  "allowed": {},
+  "numeric": {
+    "fields": {
+      "RepetitionTime": {"type": "number", "gt": 0, "lt": 3},
+      "EchoTime": {"type": "number", "gt": 0},
+      "ProjectTimingSamples": {"type": "array", "gte": 0, "lt": 1, "min_items": 3, "max_items": 3, "strictly_increasing": true}
+    },
+    "relations": [{"left": "EchoTime", "op": "lt", "right": "RepetitionTime"}]
+  }
+}

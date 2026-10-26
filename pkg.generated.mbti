@@ -283,6 +283,7 @@ pub struct MetadataExpectations {
 }
 pub fn MetadataExpectations::from_json(String) -> Self raise TraceError
 pub fn MetadataExpectations::to_json(Self) -> String
+pub fn MetadataExpectations::with_numeric(Self, NumericRules) -> Self raise TraceError
 
 pub struct MetadataPatch {
   // private fields
@@ -295,6 +296,7 @@ pub struct MetadataQuery {
 }
 pub fn MetadataQuery::from_json(String) -> Self raise TraceError
 pub fn MetadataQuery::to_json(Self) -> String
+pub fn MetadataQuery::with_numeric(Self, NumericRules) -> Self raise TraceError
 
 pub struct MetadataSelection {
   // private fields
@@ -304,6 +306,12 @@ pub fn MetadataSelection::error_count(Self) -> Int
 pub fn MetadataSelection::paths(Self) -> Array[String]
 pub fn MetadataSelection::to_json(Self) -> String
 pub fn MetadataSelection::to_json_value(Self) -> Json
+
+pub struct NumericRules {
+  // private fields
+}
+pub fn NumericRules::from_json(String) -> Self raise TraceError
+pub fn NumericRules::to_json(Self) -> String
 
 pub struct PrunePlan {
   // private fields

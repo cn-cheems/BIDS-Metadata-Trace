@@ -24,6 +24,14 @@ The raw MRI profile is versioned by documented scope rather than a claim of comp
 
 ## Architecture
 
+Optional numeric policy compiles bounded field intervals, array checks and scalar
+relations, then evaluates them after the shared resolver. A private decimal
+comparator uses significant digits and arbitrary signed decimal order, without
+Double rounding or exponent-sized power expansion. Numeric outcomes retain full
+source evidence and compose with exact expectations/selection and scoped
+acquisition rules. Existing token-sensitive diff, merge and replay remain
+unchanged. See [numeric policy](numeric.md).
+
 Three-way snapshot review adds a structural merge followed by an
 inheritance-intent check in the core package. Whole-field and source-inventory
 conflicts block the candidate; compatible edits are then resolved against

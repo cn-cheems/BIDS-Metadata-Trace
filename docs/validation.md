@@ -1,5 +1,37 @@
 # Validation evidence
 
+## Exact numeric project policy — 2026-10-26
+
+The working-tree acceptance gate passed non-mutating source/script/consumer
+format checks, generated-interface checks, strict all-target compilation,
+portable builds and actual tests: Wasm 232; Wasm-GC and JavaScript 226 each.
+WSL Ubuntu Native executed 226 tests separately. The 22 added tests/examples
+include 82,369 exact scaled-integer comparison pairs, signed decimal carry/borrow,
+10,000-digit exponent/fraction cases, 341 array combinations against an integer
+oracle, open/closed intervals, huge integers, signed zero, scalar relations,
+strict typing, null/absence, malformed/duplicate/unknown controls, empty ranges,
+256/257 field/relation bounds, combined field budgets, size limits, nested
+defensive evidence, replacement/immutability, retry and all three workflow APIs.
+
+`scripts/verify-numeric.mbtx` passed real-path interval and scoped acquisition
+checks, numeric selection with duplicate/unresolved query retention, synthetic
+array/relation planning, exact full-value/source evidence on failure, unknown
+rule rejection without partial stdout and recovery. Full legacy expect/filter/
+acquisition stdout was captured by independently building commit ae5ba80 and
+verified byte-for-byte against current output; frozen fixtures are checked on
+every CI host. Numeric rules remain explicitly opted in. Existing diff, merge,
+canonical output, exact predicates and replay retain numeric-token semantics.
+
+Actual release-archive consumers passed Wasm, Wasm-GC and JavaScript with both
+new numeric composition methods. The actual ZIP was also extracted using
+Windows system tar and its independent consumer executed successfully as Native
+under WSL Ubuntu with the pinned toolchain/GCC. This adapter does not claim the
+Linux unzip path ran. Remote CI is checked after push. The public interface adds one opaque
+NumericRules type, its parser/serializer and two composition methods. No new
+core dependency, general JSON Schema compatibility claim or registry publication
+is introduced. Standalone async 0.22.4 still emits its known duplicate c_buffer
+import warning; project strict checks pass.
+
 ## Inheritance-aware three-way merge — 2026-10-26
 
 The working-tree acceptance gate passed non-mutating package/script/consumer
