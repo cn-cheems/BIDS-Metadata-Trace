@@ -1,5 +1,9 @@
 # Validation evidence
 
+## Portable benchmark startup — 2026-10-26
+
+Actual Release startup exposed the documented Node `process.argv` extra executable entry. A JS-specific argument adapter now removes only that runtime prefix; native/WASI handling is unchanged. Target-specific regressions and real Release valid/invalid-input launches on Wasm, Wasm-GC and JavaScript guard this behavior. This follow-up changes no library API, resolver semantics or timed operations; the existing frozen Native paired measurements remain identified by their recorded binary digests. Strict checking, unchanged interfaces, formatting and end-to-end workflows passed; actual test execution passed on Wasm (190), Wasm-GC (184), JavaScript (184) and WSL Native (184).
+
 ## Indexed resolution — 2026-10-26
 
 Formatting, generated interfaces (unchanged public API), strict all-target checking, end-to-end workflows and actual execution passed: Wasm 189 tests; Wasm-GC, JavaScript and WSL Native 183 each. Six index regression tests include a 48-layout byte-for-byte oracle comparison, source ordering/ambiguity, all nine entity discriminators, exact query spellings, immutable plan/reload behavior and unmatched-source invariance across the small-set threshold. The paired Native release collector executed 36 cases for each of the frozen baseline and current binaries, with seven timed samples plus warmup per case, recording whole-process peak RSS. Nine complete manifest/audit/impact output pairs were byte-identical. The raw paired report and performance document include improvements and construction/memory costs. Performance thresholds are not used as CI pass criteria. This revision's remote result is checked after push; Mooncakes publication remains deferred.

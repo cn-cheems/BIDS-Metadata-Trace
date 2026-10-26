@@ -1,4 +1,23 @@
 ///|
+#cfg(target="js")
+test "Node benchmark argv removes only the runtime executable" {
+  assert_eq(
+    benchmark_args(["node", "benchmark.js", "audit", "scoped", "100", "3"]),
+    ["benchmark.js", "audit", "scoped", "100", "3"],
+  )
+  assert_eq(benchmark_args(["node", "benchmark.js"]), ["benchmark.js"])
+  assert_eq(benchmark_args([]), [])
+}
+
+///|
+#cfg(not(target="js"))
+test "native and WASI benchmark argv preserve the program entry" {
+  let raw = ["benchmark", "audit", "scoped", "100", "3"]
+  assert_eq(benchmark_args(raw), raw)
+  assert_eq(benchmark_args([]), [])
+}
+
+///|
 test "benchmark workloads exercise distinct source distributions with exact metadata" {
   for (shape, expected) in [("sparse", 1), ("scoped", 76), ("root-heavy", 101)] {
     let (files, sources) = workload(100, shape, false)

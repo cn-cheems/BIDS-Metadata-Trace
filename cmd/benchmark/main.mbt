@@ -93,8 +93,25 @@ fn argument_error(message : String) -> Unit raise {
 }
 
 ///|
+#cfg(target="js")
+fn benchmark_args(raw : Array[String]) -> Array[String] {
+  // core/env exposes Node's [node, script, ...], unlike native/WASI argv.
+  if raw.length() >= 2 {
+    raw[1:].to_owned()
+  } else {
+    raw
+  }
+}
+
+///|
+#cfg(not(target="js"))
+fn benchmark_args(raw : Array[String]) -> Array[String] {
+  raw
+}
+
+///|
 fn main raise {
-  let args = @env.args()
+  let args = benchmark_args(@env.args())
   guard args.length() == 5 else {
     argument_error(
       "Usage: benchmark build|audit|compare|serialize|evidence sparse|scoped|root-heavy SCANS SAMPLES",

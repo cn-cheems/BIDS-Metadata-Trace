@@ -53,3 +53,5 @@ moon run scripts/benchmark.mbtx -- PATH_TO_CURRENT_BINARY _build/performance/pai
 ```
 
 Append `--quick` for the 100-scan subset. The collector rejects byte differences in complete canonical evidence and writes no successful summary on a mismatching run. A 48-layout linear-resolver oracle suite separately covers normalized entities, scope prefixes, errors and ambiguity ordering; additional tests cover all nine entity discriminators, absent optional entities, snapshot rebuilding and small-set transition boundaries. These preservation checks support this optimization; they do not certify full BIDS conformance or remove the documented snapshot limit.
+
+The portable timing executable normalizes Node.js's extra runtime entry in `core/env.args()`; native/WASI argument handling stays unchanged. CI actually launches Release benchmarks and verifies invalid-argument diagnostics on Wasm, Wasm-GC and JavaScript, in addition to Native test/build coverage. The paired performance report was collected from the frozen Native binaries before this JS-only argument adapter; the timed operations and lookup implementation are unchanged.
