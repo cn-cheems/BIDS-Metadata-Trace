@@ -49,6 +49,7 @@ For a reproducible local package check, see [archive and independent consumer ve
 - `index.plan_edit(sidecar_path, MetadataPatch::from_json(text))` proposes an edit to one existing source, retaining complete before/after snapshots and impact evidence. `plan.updated_sidecar_json()` includes untouched metadata; `plan.after()` is a reusable candidate index.
 - `EditBatch::from_patches([(path, patch), ...])` builds coordinated edits for MoonBit callers; `from_json(text)` reads the batch format below. `index.plan_edits(batch)` validates every edit against the same baseline and returns one `BatchEditPlan`, complete source replacements and final scan impacts.
 - `ReviewBundle::create(before, after, policy)` captures complete snapshots and the complete release check. `ReviewBundle::from_json(text)` recomputes and verifies all expected evidence; `bundle.report()` exposes the verified decision.
+- `base.merge(left, right)` merges concurrent snapshot edits and checks inherited scan intent. Conflicts block the entire candidate, including cross-source edits that hide another branch's correction. `report.candidate()`, `conflicts()` and `impact()` support a reusable review workflow; see [contract and offline CLI example](docs/merge.md).
 
 See the compiler-generated [public interface](pkg.generated.mbti) and [executable library examples](USAGE.mbt.md).
 

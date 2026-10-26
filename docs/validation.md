@@ -1,5 +1,32 @@
 # Validation evidence
 
+## Inheritance-aware three-way merge — 2026-10-26
+
+The working-tree acceptance gate passed non-mutating package/script/consumer
+format checks, generated-interface drift checks, strict all-target checking,
+explicit portable builds, and actual tests: Wasm 210; Wasm-GC and JavaScript
+204 each. WSL Ubuntu Native executed 204 tests separately. These are actual
+executions, not Native compile-only evidence. Twenty new tests/examples cover
+125 scalar three-way states and 144 root/local interactions against independent
+oracles, identity/symmetry/permutation, source/field/scan additions and removals,
+whole objects/arrays, null/absence, exact numeric tokens, inherited shadowing,
+all failing branches, new ambiguity, all three MRI suffixes with participant/
+session/run scope, maximum metadata depth, aggregate overflow, 1,024/1,025
+conflict bounds, defensive results, failure recovery and snapshot/bundle replay.
+
+The real CC0 path workflow passed merge -> manifest export -> resolve -> review
+bundle -> replay; it also verifies blocked export has empty stdout, complete
+conflict evidence, rejected unknown options, missing inputs and duplicate-key
+input rejection. Synthetic edits are labeled in the fixture's source note.
+The extracted release archive consumer passed Wasm, Wasm-GC and JavaScript,
+including use of the new public merge API. The same actual ZIP was extracted
+with Windows system tar and its independent consumer executed successfully as
+Native under WSL Ubuntu with the pinned toolchain/GCC. This local adapter does
+not claim Linux package-check's unzip path ran. Remote CI is checked after push.
+The known standalone async
+0.22.4 duplicate c_buffer import warning remains upstream; project strict checks
+passed. No Mooncakes publication is performed.
+
 ## Portable benchmark startup — 2026-10-26
 
 Actual Release startup exposed the documented Node `process.argv` extra executable entry. A JS-specific argument adapter now removes only that runtime prefix; native/WASI handling is unchanged. Target-specific regressions and real Release valid/invalid-input launches on Wasm, Wasm-GC and JavaScript guard this behavior. This follow-up changes no library API, resolver semantics or timed operations; the existing frozen Native paired measurements remain identified by their recorded binary digests. Strict checking, unchanged interfaces, formatting and end-to-end workflows passed; actual test execution passed on Wasm (190), Wasm-GC (184), JavaScript (184) and WSL Native (184).

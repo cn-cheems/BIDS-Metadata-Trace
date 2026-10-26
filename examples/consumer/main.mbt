@@ -52,5 +52,21 @@ fn main raise {
     baseline.to_manifest_json() == before else {
     fail("Replay or immutable baseline contract failed")
   }
+  let annotation = baseline
+    .plan_edit(
+      "bold.json",
+      @trace.MetadataPatch::from_json(
+        "{\"set\":{\"ReviewNote\":null},\"remove\":[]}",
+      ),
+    )
+    .after()
+  let merge = baseline.merge(plan.after(), annotation)
+  guard merge.conflict_count() == 0 && merge.candidate() is Some(merged) else {
+    fail("Independent public API consumer could not merge disjoint fields")
+  }
+  guard merged.resolve(post).to_json().contains("\"ReviewNote\":null") &&
+    merge.impact().unwrap().error_count() == 0 else {
+    fail("Merge dropped metadata or failed inheritance validation")
+  }
   println("{\"consumer\":\"passed\",\"changed_scans\":1,\"scans\":2}")
 }

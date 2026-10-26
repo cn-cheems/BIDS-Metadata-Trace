@@ -1,5 +1,40 @@
 # Executable library usage
 
+Concurrent edits can be merged and passed through the existing release workflow.
+
+```mbt check
+///|
+test "three-way merge composes fields and retains a reusable candidate" {
+  let p = "sub-01/func/sub-01_task-rest_bold.nii"
+  let base = @trace.DatasetIndex::from_manifest([p], [
+    @trace.SidecarInput::new("bold.json", "{\"RepetitionTime\":2.0}"),
+  ])
+  let left = base
+    .plan_edit(
+      "bold.json",
+      @trace.MetadataPatch::from_json(
+        "{\"set\":{\"RepetitionTime\":3.0},\"remove\":[]}",
+      ),
+    )
+    .after()
+  let right = base
+    .plan_edit(
+      "bold.json",
+      @trace.MetadataPatch::from_json(
+        "{\"set\":{\"ReviewNote\":null},\"remove\":[]}",
+      ),
+    )
+    .after()
+  let report = base.merge(left, right)
+  assert_eq(report.conflict_count(), 0)
+  assert_eq(
+    report.candidate().unwrap().resolve(p).to_json(),
+    "{\"RepetitionTime\":3.0,\"ReviewNote\":null}",
+  )
+  assert_eq(report.impact().unwrap().changed_count(), 1)
+}
+```
+
 ```mbt check
 ///|
 test "source coverage accounts for a completely shadowed parent" {

@@ -24,6 +24,13 @@ The raw MRI profile is versioned by documented scope rather than a claim of comp
 
 ## Architecture
 
+Three-way snapshot review adds a structural merge followed by an
+inheritance-intent check in the core package. Whole-field and source-inventory
+conflicts block the candidate; compatible edits are then resolved against
+base/left/right/candidate for every union scan. This detects hidden corrections,
+scan deletion versus provenance edits, and new ambiguity. No conflict resolver
+guesses a branch or emits a partial index. See [merge workflows](merge.md).
+
 Source coverage reverses the scan query into source accountability: every supplied sidecar lists applicable indexed scans and exact winning/shadowed field names from successful resolution. Errors suppress guessed contribution while preserving all affected source paths and diagnostics. It is an indexed-scan projection, not a disk-wide unused-file verdict.
 
 Coordinated edits extend planning from one source to a distinct-source patch set. Typed MoonBit patches or strict JSON batches normalize to the same immutable model. All operations read the baseline; the implementation builds exactly one final index and one before/after comparison, retaining evidence even for edited sources with no indexed scan. Duplicate targets and invalid removals reject the plan. Coordinated shrinking and growth are judged by final snapshot limits; there are no observable partial snapshots and no filesystem transaction claim.

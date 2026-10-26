@@ -12,7 +12,12 @@ This performs non-mutating format checks, generated-interface drift checks, stri
 
 Success writes `_build/acceptance.json` containing the Git revision, actual selected targets, toolchain and publication status. Every attempt removes an old report first; failure cannot leave a stale success at that path. CI uploads the report. `--portable-only` and `--native-only` select explicitly recorded subsets. `--working-tree` allows a development check with pending changes and marks it as such; it is not evidence of a clean committed release. These options follow `--`.
 
-`moon run scripts/check-acceptance-guards.mbtx` verifies unknown, duplicate and conflicting options reject with useful diagnostics and remove stale success evidence. It intentionally replaces/removes `_build/acceptance.json`; run it before the full gate, as CI does. Format/interface checks cover the unchanged public API and all shipped automation.
+`moon run scripts/check-acceptance-guards.mbtx` verifies unknown, duplicate and conflicting options reject with useful diagnostics and remove stale success evidence. It intentionally replaces/removes `_build/acceptance.json`; run it before the full gate, as CI does. Format/interface checks cover the generated public API and all shipped automation.
+
+The [three-way merge workflow](merge.md) is also exercised by the gate: independent
+edits on the attributed real paths merge, export, resolve and replay, while
+inherited shadowing blocks the entire candidate. The archive consumer invokes
+the merge API as a downstream module.
 
 ## Three complete demonstrations
 

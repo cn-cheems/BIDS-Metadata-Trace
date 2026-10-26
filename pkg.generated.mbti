@@ -100,6 +100,7 @@ pub fn DatasetIndex::compare(Self, Self) -> ImpactReport
 pub fn DatasetIndex::data_paths(Self) -> Array[String]
 pub fn DatasetIndex::from_json(String) -> Self raise TraceError
 pub fn DatasetIndex::from_manifest(Array[String], Array[SidecarInput]) -> Self raise TraceError
+pub fn DatasetIndex::merge(Self, Self, Self) -> MergeReport raise TraceError
 pub fn DatasetIndex::plan_changes(Self, DatasetChanges) -> DatasetChangePlan raise TraceError
 pub fn DatasetIndex::plan_edit(Self, String, MetadataPatch) -> EditPlan raise TraceError
 pub fn DatasetIndex::plan_edits(Self, EditBatch) -> BatchEditPlan raise TraceError
@@ -239,6 +240,43 @@ pub fn ImpactReport::entries(Self) -> Array[ImpactEntry]
 pub fn ImpactReport::error_count(Self) -> Int
 pub fn ImpactReport::release_check(Self, ReleasePolicy) -> ReleaseCheck
 pub fn ImpactReport::to_json(Self) -> String
+
+pub struct MergeConflict {
+  // private fields
+}
+pub fn MergeConflict::base_json(Self) -> String?
+pub fn MergeConflict::branch(Self) -> String?
+pub fn MergeConflict::diagnostics(Self) -> Array[Diagnostic]
+pub fn MergeConflict::key(Self) -> String?
+pub fn MergeConflict::kind(Self) -> MergeConflictKind
+pub fn MergeConflict::left_json(Self) -> String?
+pub fn MergeConflict::merged_json(Self) -> String?
+pub fn MergeConflict::message(Self) -> String
+pub fn MergeConflict::path(Self) -> String
+pub fn MergeConflict::right_json(Self) -> String?
+
+pub(all) enum MergeConflictKind {
+  FieldDiverged
+  SourceAddAdd
+  SourceDeleteEdit
+  ScanDeleteEdit
+  EffectiveDiverged
+  InheritanceShadow
+  UnresolvedMetadata
+  InvalidSnapshot
+} derive(Eq, @debug.Debug)
+pub fn MergeConflictKind::equal(Self, Self) -> Bool
+pub fn MergeConflictKind::not_equal(Self, Self) -> Bool
+pub fn MergeConflictKind::to_repr(Self) -> @debug.Repr
+
+pub struct MergeReport {
+  // private fields
+}
+pub fn MergeReport::candidate(Self) -> DatasetIndex?
+pub fn MergeReport::conflict_count(Self) -> Int
+pub fn MergeReport::conflicts(Self) -> Array[MergeConflict]
+pub fn MergeReport::impact(Self) -> ImpactReport?
+pub fn MergeReport::to_json(Self) -> String
 
 pub struct MetadataExpectations {
   // private fields

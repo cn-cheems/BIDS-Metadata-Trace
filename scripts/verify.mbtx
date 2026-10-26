@@ -38,6 +38,157 @@ async fn main {
     }
   }
   let path = "sub-01/func/sub-01_task-balloonanalogrisktask_run-01_bold.nii.gz"
+  let merge_base = "examples/ds000001/manifest.json"
+  let merge_left = "examples/ds000001/changed-manifest.json"
+  let merge_right = "examples/merge/right-manifest.json"
+  let merge_dir = @fs.tmpdir(prefix="bids-trace-review")
+  errdefer clean_review_directory(merge_dir)
+  let merge_report = @shell.Cmd(
+    "moon",
+    ["run", "cmd/main", "--", "merge", merge_base, merge_left, merge_right],
+    env~,
+  ).output()
+  merge_report.check()
+  guard @json.parse(merge_report.stdout())
+    is {
+      "status": String("merged"),
+      "conflict_count": Number(0.0, ..),
+      "merged_manifest": { "files": Array([_, _, _]), .. },
+      "impact": { "error_count": Number(0.0, ..), .. },
+      ..
+    } else {
+    fail("Independent edits on real fixture paths must merge completely")
+  }
+  let merged = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--", "merge", merge_base, merge_left, merge_right, "--manifest-only",
+    ],
+    env~,
+  ).output()
+  merged.check()
+  let merged_path = merge_dir + "/merged.json"
+  @fs.write_file(merged_path, merged.stdout())
+  let merged_resolution = @shell.Cmd(
+    "moon",
+    ["run", "cmd/main", "--", "resolve", merged_path, path],
+    env~,
+  ).output()
+  merged_resolution.check()
+  guard @json.parse(merged_resolution.stdout())
+    is {
+      "metadata": {
+        "RepetitionTime": Number(3.0, ..),
+        "TaskName": String("balloon analog risk task"),
+        "ReviewNote": Object(_),
+        ..
+      },
+      ..
+    } else {
+    fail(
+      "Exported merge must preserve both edits and the original acquisition label",
+    )
+  }
+  guard merged.stdout().contains("9007199254740993") &&
+    merged.stdout().contains("1e999") &&
+    merged.stdout().contains("-0") else {
+    fail("Merge export changed exact number tokens")
+  }
+  let captured = @shell.Cmd(
+    "moon",
+    ["run", "cmd/main", "--", "bundle", merge_base, merged_path],
+    env~,
+  ).output()
+  captured.check()
+  let bundle_path = merge_dir + "/bundle.json"
+  @fs.write_file(bundle_path, captured.stdout())
+  let merge_replay = @shell.Cmd(
+    "moon",
+    ["run", "cmd/main", "--", "replay", bundle_path],
+    env~,
+  ).output()
+  merge_replay.check()
+  for manifest_only in [false, true] {
+    let controls = [
+      "run", "cmd/main", "--", "merge", merge_base, merge_left, "examples/ds000001/provenance-manifest.json",
+    ]
+    if manifest_only {
+      controls.push("--manifest-only")
+    }
+    let blocked = @shell.Cmd("moon", controls, env~).output()
+    guard blocked.exit_code() == 1 else {
+      fail("Shadowed correction must block merge")
+    }
+    if manifest_only {
+      guard blocked.stdout().is_empty() &&
+        @json.parse(blocked.stderr()) is { "code": String("merge_blocked"), .. } else {
+        fail(
+          "Blocked export must have no partial stdout and an actionable diagnostic",
+        )
+      }
+    } else {
+      guard @json.parse(blocked.stdout())
+        is {
+          "status": String("conflicts"),
+          "conflict_count": Number(1.0, ..),
+          "merged_manifest": Null,
+          "impact": Null,
+          "conflicts": Array(
+            [{ "kind": String("inheritance_shadow"), "path": String(p), .. }]
+          ),
+          ..
+        } &&
+        p == path else {
+        fail("Expected complete scan-level inheritance conflict")
+      }
+    }
+  }
+  let bad_merge = @shell.Cmd(
+    "moon",
+    [
+      "run", "cmd/main", "--", "merge", merge_base, merge_left, merge_right, "--force",
+    ],
+    env~,
+  ).output()
+  guard bad_merge.exit_code() == 1 &&
+    bad_merge.stdout().is_empty() &&
+    bad_merge.stderr().contains("Usage:") else {
+    fail("Unknown merge controls must fail without a candidate")
+  }
+  let missing_merge = @shell.Cmd(
+    "moon",
+    [
+      "run",
+      "cmd/main",
+      "--",
+      "merge",
+      merge_base,
+      merge_left,
+      merge_dir + "/missing.json",
+    ],
+    env~,
+  ).output()
+  guard missing_merge.exit_code() == 1 &&
+    missing_merge.stdout().is_empty() &&
+    @json.parse(missing_merge.stderr()) is { "code": String("io_error"), .. } else {
+    fail("Missing merge input must fail without a partial report")
+  }
+  let malformed_path = merge_dir + "/malformed.json"
+  @fs.write_file(malformed_path, "{\"files\":[],\"files\":[],\"sidecars\":[]}")
+  let malformed_merge = @shell.Cmd(
+    "moon",
+    ["run", "cmd/main", "--", "merge", merge_base, merge_left, malformed_path],
+    env~,
+  ).output()
+  guard malformed_merge.exit_code() == 1 &&
+    malformed_merge.stdout().is_empty() &&
+    @json.parse(malformed_merge.stderr())
+    is { "code": String("duplicate_json_key"), .. } else {
+    fail(
+      "Malformed merge input must be rejected before a candidate can be exported",
+    )
+  }
+  clean_review_directory(merge_dir)
   for
     manifest in [
       "manifest.json", "provenance-manifest.json", "changed-manifest.json",

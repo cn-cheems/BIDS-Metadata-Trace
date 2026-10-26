@@ -4,7 +4,7 @@ extern "wasm" fn exit(code : Int32) -> Unit = "wasi_snapshot_preview1" "proc_exi
 
 ///|
 fn usage() -> String {
-  "Usage: bids-metadata-trace discover DATASET_DIR [--manifest-only] | select MANIFEST.json QUERY.json [--audit] | filter MANIFEST.json METADATA_QUERY.json [DATA_PATH ...] | acquisition MANIFEST.json RULES.json | sources MANIFEST.json | summarize MANIFEST.json FIELD... | table MANIFEST.json FIELD... | expect MANIFEST.json EXPECTATIONS.json [DATA_PATH ...] | plan MANIFEST.json SIDECAR_PATH PATCH.json [--manifest-only] | plan-batch MANIFEST.json BATCH.json [--manifest-only] | plan-sources MANIFEST.json CHANGES.json [--manifest-only] | plan-scans MANIFEST.json SCAN_CHANGES.json [--manifest-only] | plan-changes MANIFEST.json CHANGES.json [--manifest-only] | prune MANIFEST.json SIDECAR_PATH FIELD... | consistency MANIFEST.json RULES.json [DATA_PATH ...] | bundle BEFORE.json AFTER.json [--effective-only] | replay BUNDLE.json | resolve MANIFEST.json DATA_PATH | audit MANIFEST.json [DATA_PATH ...] | diff BEFORE.json AFTER.json | check BEFORE.json AFTER.json [--effective-only]"
+  "Usage: bids-metadata-trace discover DATASET_DIR [--manifest-only] | select MANIFEST.json QUERY.json [--audit] | filter MANIFEST.json METADATA_QUERY.json [DATA_PATH ...] | acquisition MANIFEST.json RULES.json | sources MANIFEST.json | summarize MANIFEST.json FIELD... | table MANIFEST.json FIELD... | expect MANIFEST.json EXPECTATIONS.json [DATA_PATH ...] | plan MANIFEST.json SIDECAR_PATH PATCH.json [--manifest-only] | plan-batch MANIFEST.json BATCH.json [--manifest-only] | plan-sources MANIFEST.json CHANGES.json [--manifest-only] | plan-scans MANIFEST.json SCAN_CHANGES.json [--manifest-only] | plan-changes MANIFEST.json CHANGES.json [--manifest-only] | merge BASE.json LEFT.json RIGHT.json [--manifest-only] | prune MANIFEST.json SIDECAR_PATH FIELD... | consistency MANIFEST.json RULES.json [DATA_PATH ...] | bundle BEFORE.json AFTER.json [--effective-only] | replay BUNDLE.json | resolve MANIFEST.json DATA_PATH | audit MANIFEST.json [DATA_PATH ...] | diff BEFORE.json AFTER.json | check BEFORE.json AFTER.json [--effective-only]"
 }
 
 ///|
@@ -226,6 +226,13 @@ async fn main {
     ((args[1] == "summarize" || args[1] == "table") && args.length() >= 4) ||
     (args[1] == "replay" && args.length() == 3) ||
     (
+      args[1] == "merge" &&
+      (
+        args.length() == 5 ||
+        (args.length() == 6 && args[5] == "--manifest-only")
+      )
+    ) ||
+    (
       (
         args[1] == "plan-batch" ||
         args[1] == "plan-sources" ||
@@ -279,7 +286,29 @@ async fn main {
       return
     }
     let index = load_manifest(args[2])
-    if args[1] == "consistency" {
+    if args[1] == "merge" {
+      let report = index.merge(load_manifest(args[3]), load_manifest(args[4]))
+      if args.length() == 6 {
+        guard report.candidate() is Some(candidate) else {
+          let d : @trace.Diagnostic = {
+            code: "merge_blocked",
+            path: args[2],
+            message: "Merge has conflicts; omit --manifest-only to inspect the complete report. No candidate was exported.",
+            offset: None,
+            related: [args[3], args[4]],
+          }
+          @stdio.stderr.write(d.to_report_json() + "\n")
+          exit(1)
+          return
+        }
+        println(candidate.to_manifest_json())
+      } else {
+        println(report.to_json())
+        if report.conflict_count() > 0 {
+          exit(1)
+        }
+      }
+    } else if args[1] == "consistency" {
       let rules = @trace.ConsistencyRules::from_json(read_control(args[3]))
       let audit = if args.length() == 4 {
         index.audit_all()

@@ -1,5 +1,12 @@
 # Sources, reuse and differentiation
 
+Three-way snapshot merge, its inheritance-conflict policy, scalar/interaction
+oracles, tests, CLI integration and examples are independently authored
+Apache-2.0 work. They reuse this repository's attributed CC0 ds000001 paths and
+metadata with explicitly synthetic mutations; see [merge source notes](examples/merge/SOURCE.md).
+The [boundary review](docs/merge.md#boundary-review) records current reference
+links and search uncertainty. No external merge implementation or tests were copied.
+
 ## Specification
 
 - BIDS 1.11.2 [inheritance principle](https://bids-specification.readthedocs.io/en/stable/common-principles.html#the-inheritance-principle): behavioral reference for applicability, directory precedence and same-level ambiguity. The specification is CC BY 4.0. Implementation and authored tests are not copied from its code or prose; normative behavior is implemented independently. Attribution: BIDS contributors, https://github.com/bids-standard/bids-specification.
