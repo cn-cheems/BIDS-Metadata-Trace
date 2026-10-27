@@ -6,7 +6,7 @@ This is a bounded implementation of the [BIDS 1.11.2 inheritance principle](http
 
 ## Run the real-data example
 
-Requires MoonBit stable v0.10.15. The CLI runs under Moonrun on the Wasm target and needs no C compiler. The module pins `moonbitlang/async` 0.22.4 for CLI filesystem access; the library uses core only. Native core compilation/testing separately requires a system C toolchain; on Windows this stable version requires MSVC Build Tools with C++ tools and the Windows SDK.
+Requires MoonBit stable v0.10.17. The CLI runs under Moonrun on the Wasm target and needs no C compiler. The module pins `moonbitlang/async` 0.22.5 for CLI filesystem access; the library uses core only. Native core compilation/testing separately requires a system C toolchain; on Windows this stable version requires MSVC Build Tools with C++ tools and the Windows SDK.
 
 ```sh
 moon update
@@ -356,3 +356,8 @@ Run `moon run cmd/main -- prune examples/ds000001/provenance-manifest.json sub-0
 `moon run cmd/main -- consistency examples/ds000001/manifest.json examples/ds000001/consistency-rules.json` checks the real fixture's RT consistency by subject/task. Optional data paths restrict the audit; failed queries remain indeterminate. `provenance-manifest.json` also passes despite its different assignment history. Uniform wrong values can pass: consistency does not replace explicit acquisition expectations. Missing metadata differs from explicit null; exact numeric spellings and array ordering matter. Errors or an empty audit take priority over violations. Reports retain the full audit, groups, value buckets, original query indices and assignment histories; each inconsistent group-field pair counts once. CLI exits 1 for violations or indeterminate results.
 
 To reproduce a failing review, export `plan-changes examples/ds000001/manifest.json examples/ds000001/consistency-changes.json --manifest-only` to a new manifest, then run `consistency` on that manifest with `consistency-rules.json`. This authored synthetic change overrides only run 01 to 3.0 while runs 02/03 retain the fixture's 2.0, producing one group-field violation. `scripts/verify.mbtx` executes this complete workflow in a temporary directory and checks both the exit code and diagnostic report.
+## Explicit conflict reconciliation
+
+Blocked merges can now accept snapshot-bound source/scan decisions and exact
+effective-field assertions, revalidate all inherited scan outcomes, and export
+independently replayable merge review bundles. See [the complete workflow](docs/reconciliation.md).

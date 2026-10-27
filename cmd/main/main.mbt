@@ -4,6 +4,7 @@ extern "wasm" fn exit(code : Int32) -> Unit = "wasi_snapshot_preview1" "proc_exi
 
 ///|
 fn usage() -> String {
+  "Reconciliation: merge BASE.json LEFT.json RIGHT.json --resolution-template | reconcile BASE.json LEFT.json RIGHT.json RESOLUTION.json [--manifest-only|--bundle|--effective-bundle] | replay-merge BUNDLE.json\n" +
   "Usage: bids-metadata-trace discover DATASET_DIR [--manifest-only] | select MANIFEST.json QUERY.json [--audit] | filter MANIFEST.json METADATA_QUERY.json [DATA_PATH ...] | acquisition MANIFEST.json RULES.json | sources MANIFEST.json | summarize MANIFEST.json FIELD... | table MANIFEST.json FIELD... | expect MANIFEST.json EXPECTATIONS.json [DATA_PATH ...] | plan MANIFEST.json SIDECAR_PATH PATCH.json [--manifest-only] | plan-batch MANIFEST.json BATCH.json [--manifest-only] | plan-sources MANIFEST.json CHANGES.json [--manifest-only] | plan-scans MANIFEST.json SCAN_CHANGES.json [--manifest-only] | plan-changes MANIFEST.json CHANGES.json [--manifest-only] | merge BASE.json LEFT.json RIGHT.json [--manifest-only] | prune MANIFEST.json SIDECAR_PATH FIELD... | consistency MANIFEST.json RULES.json [DATA_PATH ...] | bundle BEFORE.json AFTER.json [--effective-only] | replay BUNDLE.json | resolve MANIFEST.json DATA_PATH | audit MANIFEST.json [DATA_PATH ...] | diff BEFORE.json AFTER.json | check BEFORE.json AFTER.json [--effective-only]"
 }
 
@@ -148,13 +149,13 @@ async fn load_scan_changes(path : String) -> @trace.ScanChanges {
 }
 
 ///|
-async fn read_control(path : String) -> String {
+async fn read_control(path : String, large~ : Bool = false) -> String {
   try {
-    if @fs.file_size(path) > 8388608L {
+    if @fs.file_size(path) > (if large { 67108864L } else { 8388608L }) {
       raise @trace.TraceError({
         code: "input_limit",
         path,
-        message: "Control input exceeds 8 MiB on disk; reduce the review scope.",
+        message: "Control input exceeds its disk size limit (8 MiB, or 64 MiB for reconciliation/review); reduce the review scope.",
         offset: None,
         related: [],
       })
@@ -224,12 +225,27 @@ async fn main {
     (args[1] == "sources" && args.length() == 3) ||
     (args[1] == "prune" && args.length() >= 5) ||
     ((args[1] == "summarize" || args[1] == "table") && args.length() >= 4) ||
-    (args[1] == "replay" && args.length() == 3) ||
+    ((args[1] == "replay" || args[1] == "replay-merge") && args.length() == 3) ||
+    (
+      args[1] == "reconcile" &&
+      (
+        args.length() == 6 ||
+        (
+          args.length() == 7 &&
+          ["--manifest-only", "--bundle", "--effective-bundle"].contains(
+            args[6],
+          )
+        )
+      )
+    ) ||
     (
       args[1] == "merge" &&
       (
         args.length() == 5 ||
-        (args.length() == 6 && args[5] == "--manifest-only")
+        (
+          args.length() == 6 &&
+          ["--manifest-only", "--resolution-template"].contains(args[5])
+        )
       )
     ) ||
     (
@@ -270,6 +286,18 @@ async fn main {
     return
   }
   try {
+    if args[1] == "replay-merge" {
+      println(
+        @trace.MergeReviewBundle::from_json(read_control(args[2], large=true))
+        .report()
+        .to_json(),
+      )
+      return
+    }
+    if args[1] == "reconcile" {
+      run_reconciliation(args)
+      return
+    }
     if args[1] == "replay" {
       println(load_bundle(args[2]).report().to_json())
       return
@@ -288,6 +316,10 @@ async fn main {
     let index = load_manifest(args[2])
     if args[1] == "merge" {
       let report = index.merge(load_manifest(args[3]), load_manifest(args[4]))
+      if args.length() == 6 && args[5] == "--resolution-template" {
+        println(report.resolution_template())
+        return
+      }
       if args.length() == 6 {
         guard report.candidate() is Some(candidate) else {
           let d : @trace.Diagnostic = {

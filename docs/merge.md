@@ -122,6 +122,9 @@ checks on every existing CI host.
 
 ## Boundary review
 
+Explicit decisions, full revalidation and replayable merge reviews are now
+available in [the reconciliation workflow](reconciliation.md).
+
 On 2026-10-26 bounded searches used `MoonBit BIDS metadata inheritance merge
 snapshot Mooncakes GitHub`, and inspected [PyBIDS](https://github.com/bids-standard/pybids)
 (MIT), its [workflow documentation](https://bids-standard.github.io/pybids/user_guide.html),

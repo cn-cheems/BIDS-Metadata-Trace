@@ -15,5 +15,5 @@ preferred_target = "wasm"
 description = "Lossless BIDS JSON metadata inheritance and field provenance for raw MRI datasets."
 
 import {
-  "moonbitlang/async@0.22.4",
+  "moonbitlang/async@0.22.5",
 }

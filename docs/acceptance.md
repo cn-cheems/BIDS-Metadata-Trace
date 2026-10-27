@@ -2,7 +2,7 @@
 
 The acceptance boundary is offline raw-MRI metadata review: supported paths and complete supplied JSON snapshots → effective values and provenance → reviewed candidate changes → policy checks and replay. This is not an image converter, full BIDS validator or a certificate of scientific correctness. Current implemented boundaries are in README; publication is deferred by the owner.
 
-From a clean checkout, install the pinned CI toolchain (0.10.15+943464bfa), run `moon update`, then:
+From a clean checkout, install the pinned CI toolchain (0.10.17+d971670cd), run `moon update`, then:
 
 ```sh
 moon run scripts/acceptance.mbtx
@@ -42,3 +42,8 @@ The archive consumer exercises both numeric composition methods.
 - Separate submission checks: reconcile final functionality against the actual submitted proposal and the rules of the specific contest; mirror to another host only if those rules require it. This document does not assert organizer approval or that every submission condition has been satisfied.
 
 Additional modalities, larger snapshot limits and schema-level BIDS validation remain future work. They are not required to demonstrate the declared profile, and are not represented as completed features.
+## Explicit conflict decisions
+
+`moon run scripts/verify-reconciliation.mbtx` demonstrates blocked merge ->
+content-bound decisions -> full revalidation -> manifest export -> merge review
+replay. The unified gate runs it automatically. See [the complete example](reconciliation.md).

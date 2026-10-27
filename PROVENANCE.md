@@ -25,7 +25,7 @@ links and search uncertainty. No external merge implementation or tests were cop
 ## Dependencies and build tooling
 
 - MoonBit core JSON validation and scalar string encoding, Apache-2.0: https://github.com/moonbitlang/core. No core source or tests are copied. The installed v0.10.14 interfaces and source were inspected to verify numeric representations and API behavior.
-- `moonbitlang/async` 0.22.4 (Apache-2.0): https://github.com/moonbitlang/async. Used for CLI IO and MoonBit automation, not for metadata semantics.
+- `moonbitlang/async` 0.22.5 (Apache-2.0): https://github.com/moonbitlang/async. Used for CLI IO and MoonBit automation, not for metadata semantics.
 - `hustcer/setup-moonbit` (MIT): https://github.com/hustcer/setup-moonbit. Used as an action, not vendored.
 - GitHub checkout action (MIT): https://github.com/actions/checkout. Used as an action, not vendored.
 - Windows MSVC environment action (MIT): https://github.com/ilammy/msvc-dev-cmd. Used as an action, not vendored.
@@ -86,3 +86,10 @@ The acceptance orchestrator, its stale-evidence/invalid-control regression scrip
 `examples/ds006/` transcribes a pinned four-path/two-field subset from the official bids-examples ds006 fixture. Its upstream declaration dedicates data under PDDL 1.0, with OpenfMRI/NSF acknowledgement requested; see `examples/ds006/SOURCE.md` for authors, fixed links, scope and license. It is separate from the CC0 ds000001 fixture. Session-change controls, workflow checks and the 1,000-scan scale regression are independently authored Apache-2.0 code; generated scale paths are synthetic, not observed participant records. No imaging or participant tables are copied.
 
 Atomic dataset planning, proof-based override pruning and cohort consistency code/tests are independently authored under this repository's Apache-2.0 license. No upstream implementation or test code was copied. Combined-change examples modify the existing attributed ds000001 fixture synthetically; they are not original acquisition records. Related workflow reference: https://bids-standard.github.io/pybids/layout/index.html (PyBIDS, MIT); reference only, not a port. A bounded search for “MoonBit BIDS metadata atomic changes redundant sidecar consistency cohort Mooncakes” did not establish comparable MoonBit coverage; this is not evidence of ecosystem uniqueness.
+## Explicit reconciliation
+
+The content-bound resolution grammar, full inheritance revalidation, merge-review
+format, implementation and tests are authored Apache-2.0 work. The synthetic
+decision fixture reuses the already attributed CC0 ds000001 subset; no external
+merge or incremental engine code/test cases were copied. Related work and bounded
+search uncertainty are recorded in `docs/reconciliation.md`.

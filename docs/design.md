@@ -64,3 +64,8 @@ Metadata expectation checks consume a recoverable audit after inheritance, prese
 Scan selection is a validated filename-entity query over the index, not a new truncated index. Normalization reuses the resolver's decimal-string and label rules; criteria use AND across keys and OR across choices. Selected/excluded paths account for the original data inventory. The selection retains the immutable original index, so a selected audit always resolves with all supplied sources; failed selected resolutions are never suppressed. Empty selections stay empty through audit and retain the expectation gate's empty-scope indeterminacy.
 
 Redundant override pruning requires all indexed scans to resolve before/after with identical exact effective values; it retains source/provenance evidence and cannot prove safety for unindexed scans. Grouped consistency compares exact values within normalized filename-entity groups, retaining missing/null distinctions and failed query occurrences. It checks agreement, without asserting that a shared value is correct. The formal delivery boundary and three independently reproducible workflows are recorded in `docs/acceptance.md`.
+## Explicit reconciliation
+
+Content-bound source/scan decisions and exact effective-field assertions now
+extend blocked merge review through full inheritance revalidation and replayable
+merge bundles. See [contract and complete example](reconciliation.md).

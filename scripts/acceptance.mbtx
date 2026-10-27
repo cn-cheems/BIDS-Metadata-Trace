@@ -1,11 +1,12 @@
-///|
+----
 import {
-  "moonbitlang/async@0.22.4",
-  "moonbitlang/async@0.22.4/fs",
-  "moonbitlang/async@0.22.4/shell",
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.5/fs",
+  "moonbitlang/async@0.22.5/shell",
   "moonbitlang/core/env",
   "moonbitlang/core/json",
 }
+----
 
 ///|
 async fn acceptance_command(args : Array[String]) -> String {
@@ -66,6 +67,7 @@ async fn main {
     acceptance_command([
       "fmt", "--check", "scripts/verify.mbtx", "scripts/package-check.mbtx", "scripts/acceptance.mbtx",
       "scripts/check-acceptance-guards.mbtx", "scripts/benchmark.mbtx", "scripts/verify-numeric.mbtx",
+      "scripts/verify-reconciliation.mbtx",
     ]),
   )
   ignore(acceptance_command(["-C", "examples/consumer", "fmt", "--check"]))

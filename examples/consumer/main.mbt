@@ -87,5 +87,15 @@ fn main raise {
   guard merged.audit_all().check_expectations(expected).violation_count() == 0 else {
     fail("Numeric expectations failed in independent archive consumer")
   }
+  let resolution = @trace.MergeResolution::from_json(
+    merge.resolution_template(),
+  )
+  let reconciled = merge.reconcile(resolution)
+  let merge_bundle = reconciled.review_bundle(@trace.ReleasePolicy::AllChanges)
+  guard @trace.MergeReviewBundle::from_json(merge_bundle.to_json()).to_json() ==
+    merge_bundle.to_json() &&
+    reconciled.conflict_count() == 0 else {
+    fail("Archive consumer failed explicit merge review replay")
+  }
   println("{\"consumer\":\"passed\",\"changed_scans\":1,\"scans\":2}")
 }

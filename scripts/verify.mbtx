@@ -1,11 +1,12 @@
-///|
+----
 import {
-  "moonbitlang/async@0.22.4",
-  "moonbitlang/async@0.22.4/shell",
-  "moonbitlang/async@0.22.4/fs",
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.5/shell",
+  "moonbitlang/async@0.22.5/fs",
   "moonbitlang/core/env",
   "moonbitlang/core/json",
 }
+----
 
 ///|
 async fn clean_review_directory(root : String) -> Unit {
@@ -38,6 +39,7 @@ async fn main {
     }
   }
   @shell.Cmd("moon", ["run", "scripts/verify-numeric.mbtx"], env~).run()
+  @shell.Cmd("moon", ["run", "scripts/verify-reconciliation.mbtx"], env~).run()
   let path = "sub-01/func/sub-01_task-balloonanalogrisktask_run-01_bold.nii.gz"
   let merge_base = "examples/ds000001/manifest.json"
   let merge_left = "examples/ds000001/changed-manifest.json"

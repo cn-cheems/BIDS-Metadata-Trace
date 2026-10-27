@@ -259,6 +259,16 @@ pub fn DatasetIndex::merge(
   left : DatasetIndex,
   right : DatasetIndex,
 ) -> MergeReport raise TraceError {
+  self.merge_with(left, right, None)
+}
+
+///|
+fn DatasetIndex::merge_with(
+  self : DatasetIndex,
+  left : DatasetIndex,
+  right : DatasetIndex,
+  resolution : MergeResolution?,
+) -> MergeReport raise TraceError {
   let conflicts : Array[MergeConflict] = []
   let b = merge_sources(self)
   let l = merge_sources(left)
@@ -269,8 +279,23 @@ pub fn DatasetIndex::merge(
       paths[path] = true
     }
   }
+  if resolution is Some(plan) {
+    for decision in plan.sources {
+      paths[decision.path] = true
+    }
+  }
   let inputs : Array[SidecarInput] = []
   for path in sorted_keys(paths) {
+    if resolution is Some(plan) && plan.source_at(path) is Some(decision) {
+      if decision.metadata is Some(metadata) {
+        inputs.push(SidecarInput::new(path, canonical_json(metadata)))
+      } else if !paths_in_inputs(self, left, right, path, source=true) {
+        reject(
+          "unused_resolution", path, "Cannot remove a source absent from all three inputs.",
+        )
+      }
+      continue
+    }
     let bv = b.get(path)
     let lv = l.get(path)
     let rv = r.get(path)
@@ -349,7 +374,22 @@ pub fn DatasetIndex::merge(
       scans[path] = true
     }
   }
+  if resolution is Some(plan) {
+    for decision in plan.scans {
+      if !decision.retained && !scans.contains(decision.path) {
+        reject(
+          "unused_resolution",
+          decision.path,
+          "Cannot remove a scan absent from all three inputs.",
+        )
+      }
+      scans[decision.path] = true
+    }
+  }
   let files = sorted_keys(scans).filter(path => {
+    if resolution is Some(plan) && plan.scan_at(path) is Some(decision) {
+      return decision.retained
+    }
     let bp = self.file_positions.contains(path)
     let lp = left.file_positions.contains(path)
     let rp = right.file_positions.contains(path)
@@ -369,7 +409,18 @@ pub fn DatasetIndex::merge(
       return { base: self, left, right, candidate: None, conflicts, }
     }
   }
-  merge_check_scans(self, left, right, candidate, sorted_keys(scans), conflicts)
+  if resolution is Some(plan) {
+    plan.check_effective(candidate)
+  }
+  merge_check_scans(
+    self,
+    left,
+    right,
+    candidate,
+    sorted_keys(scans),
+    conflicts,
+    resolution~,
+  )
   {
     base: self,
     left,

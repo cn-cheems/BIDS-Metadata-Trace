@@ -151,3 +151,19 @@ Strict checking and execution passed on Wasm (172 tests), Wasm-GC, JavaScript an
 ## Grouped consistency review — 2026-10-18
 
 Stable-toolchain formatting, interface generation and strict all-target checking passed. Tests executed on Wasm (179), Wasm-GC (173), JavaScript (173) and actual WSL Ubuntu native (173). Coverage includes exact numeric spelling, whole-array order, absent versus null fields, absent grouping entities, normalized decimal entities, duplicate query occurrences, errors/empty scopes, deterministic output, copied constructor inputs, malformed controls, 256/257-field boundaries and config round trips. The documented ds000001 CLI workflow passes on original/provenance/uniformly changed fixtures and rejects a synthetic run-specific RT difference with exactly one group-field violation. Full original audit evidence remains in every report. This checks agreement, not scientific validity or full BIDS compliance. The preceding pruning revision's Linux/macOS/Windows CI run passed: https://github.com/cn-cheems/BIDS-Metadata-Trace/actions/runs/39055601173.
+# Explicit reconciliation — 2026-10-27
+
+Stable 0.10.17+d971670cd (official version endpoint checked on this date), async
+0.22.5 and frontmatter script imports passed strict all-target compilation,
+format/interface drift checks, Wasm243 tests, Wasm-GC/JS237 tests each and actual
+Native237 tests. Eleven new core tests include 125 exact scalar combinations,
+per-scan/per-field consent, source add/delete and scan delete/edit decisions,
+stale snapshot bindings, immutable retries, unresolved historical inputs,
+deterministic plan/bundle round trips, tampered evidence/wrong release snapshots,
+depth64/65, reason4096/4097, source256/257, assertion1024/1025 and input-size limits.
+The real-path CLI example executes template -> partial blockage -> explicit
+source reconciliation -> full inherited impact -> export -> merge review replay,
+including both release policies, stale plans, unsupported options and recovery.
+The actual release ZIP's independent consumer ran on Wasm/Wasm-GC/JS and Native;
+no Mooncakes publication was attempted. Local Native uses WSL/GCC; Windows Native
+is verified by the CI matrix with MSVC. Remote results are checked after push.

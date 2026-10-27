@@ -1,0 +1,145 @@
+----
+import {
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.5/fs",
+  "moonbitlang/async@0.22.5/shell",
+  "moonbitlang/core/json",
+}
+----
+
+///|
+async fn reconciliation_cli(
+  args : Array[String],
+  expected : Int32,
+) -> @shell.Output {
+  let output = @shell.Cmd("moon", ["run", "cmd/main", "--"] + args).output(
+    max_output_bytes=67108864,
+  )
+  guard output.exit_code() == expected else {
+    fail(
+      "Reconciliation CLI failed: " +
+      args.join(" ") +
+      "\n" +
+      output.stdout() +
+      output.stderr(),
+    )
+  }
+  output
+}
+
+///|
+async fn reconciliation_cleanup(root : String) -> Unit {
+  if !@fs.exists(root) {
+    return
+  }
+  let absolute = @fs.realpath(root)
+  guard absolute
+    .replace_all(old="\\", new="/")
+    .split("/")
+    .last()
+    .unwrap()
+    .has_prefix("bids-trace-reconciliation.") else {
+    fail("Refusing cleanup outside reconciliation temporary directory")
+  }
+  @fs.rmdir(absolute, recursive=true)
+}
+
+///|
+async fn main {
+  let inputs = [
+    "examples/ds000001/manifest.json", "examples/ds000001/changed-manifest.json",
+    "examples/ds000001/provenance-manifest.json",
+  ]
+  let plan = "examples/merge/resolution.json"
+  let controls = ["reconcile"] + inputs + [plan]
+  let root = @fs.tmpdir(prefix="bids-trace-reconciliation")
+  errdefer reconciliation_cleanup(root)
+  let template = reconciliation_cli(
+    ["merge"] + inputs + ["--resolution-template"],
+    0,
+  ).stdout()
+  let empty = root + "/empty.json"
+  @fs.write_file(empty, template)
+  let blocked = reconciliation_cli(["reconcile"] + inputs + [empty], 1)
+  guard blocked.stdout().contains("inheritance_shadow") &&
+    blocked.stdout().contains("\"merged_manifest\":null") else {
+    fail("Empty decisions waived an inheritance conflict")
+  }
+  for flag in ["--manifest-only", "--bundle"] {
+    let output = reconciliation_cli(["reconcile"] + inputs + [empty, flag], 1)
+    guard output.stdout().is_empty() &&
+      output.stderr().contains("reconciliation_blocked") else {
+      fail("Blocked reconciliation exported partial data")
+    }
+  }
+  let report = reconciliation_cli(controls, 0)
+  guard @json.parse(report.stdout())
+    is {
+      "revalidated": {
+        "status": String("merged"),
+        "conflict_count": Number(0.0, ..),
+        "impact": {
+          "changed_count": Number(3.0, ..),
+          "error_count": Number(0.0, ..),
+          ..
+        },
+        ..
+      },
+      ..
+    } else {
+    fail("Reconciliation did not revalidate all three real scan paths")
+  }
+  let candidate = root + "/candidate.json"
+  @fs.write_file(
+    candidate,
+    reconciliation_cli(controls + ["--manifest-only"], 0).stdout(),
+  )
+  let path = "sub-01/func/sub-01_task-balloonanalogrisktask_run-01_bold.nii.gz"
+  let resolved = reconciliation_cli(["resolve", candidate, path], 0).stdout()
+  guard resolved.contains("\"RepetitionTime\":3.0") &&
+    resolved.contains("balloon analog risk task") &&
+    resolved.contains(
+      "sub-01/func/sub-01_task-balloonanalogrisktask_run-01_bold.json",
+    ) else {
+    fail(
+      "Explicit empty source decision lost inherited RT, TaskName or source-chain evidence",
+    )
+  }
+  for flag in ["--bundle", "--effective-bundle"] {
+    let bundle = root + "/review.json"
+    let text = reconciliation_cli(controls + [flag], 0).stdout()
+    @fs.write_file(bundle, text)
+    let replay = reconciliation_cli(["replay-merge", bundle], 0)
+    guard replay.stdout().contains("changes_detected") else {
+      fail(
+        "Replay must reproduce the release decision, not authorize a changed dataset",
+      )
+    }
+    @fs.write_file(
+      bundle,
+      text.replace_all(old="\"version\":1", new="\"version\":2"),
+    )
+    let invalid = reconciliation_cli(["replay-merge", bundle], 1)
+    guard invalid.stdout().is_empty() &&
+      invalid.stderr().contains("unsupported_merge_review") else {
+      fail("Unsupported merge review version was accepted")
+    }
+  }
+  let stale = reconciliation_cli(
+    ["reconcile", inputs[0], inputs[0], inputs[2], plan],
+    1,
+  )
+  guard stale.stdout().is_empty() &&
+    stale.stderr().contains("stale_merge_resolution") else {
+    fail("Stale resolution was silently rebound")
+  }
+  let bad = reconciliation_cli(controls + ["--force"], 1)
+  guard bad.stdout().is_empty() && bad.stderr().contains("Usage:") else {
+    fail("Unknown reconciliation option")
+  }
+  ignore(reconciliation_cli(controls, 0))
+  reconciliation_cleanup(root)
+  println(
+    "Verified explicit decisions -> full inheritance revalidation -> export -> independently replayed merge review.",
+  )
+}

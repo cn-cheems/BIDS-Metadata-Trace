@@ -1,0 +1,57 @@
+{
+"base":{
+  "files": [
+    "sub-01/func/sub-01_task-balloonanalogrisktask_run-01_bold.nii.gz",
+    "sub-01/func/sub-01_task-balloonanalogrisktask_run-02_bold.nii.gz",
+    "sub-01/func/sub-01_task-balloonanalogrisktask_run-03_bold.nii.gz"
+  ],
+  "sidecars": [
+    {
+      "path": "task-balloonanalogrisktask_bold.json",
+      "metadata": {
+        "RepetitionTime": 2.0,
+        "TaskName": "balloon analog risk task"
+      }
+    }
+  ]
+}
+,
+"left":{
+  "files": [
+    "sub-01/func/sub-01_task-balloonanalogrisktask_run-01_bold.nii.gz",
+    "sub-01/func/sub-01_task-balloonanalogrisktask_run-02_bold.nii.gz",
+    "sub-01/func/sub-01_task-balloonanalogrisktask_run-03_bold.nii.gz"
+  ],
+  "sidecars": [
+    {
+      "path": "task-balloonanalogrisktask_bold.json",
+      "metadata": {
+        "RepetitionTime": 3.0,
+        "TaskName": "balloon analog risk task"
+      }
+    }
+  ]
+}
+,
+"right":{
+  "files": [
+    "sub-01/func/sub-01_task-balloonanalogrisktask_run-01_bold.nii.gz",
+    "sub-01/func/sub-01_task-balloonanalogrisktask_run-02_bold.nii.gz",
+    "sub-01/func/sub-01_task-balloonanalogrisktask_run-03_bold.nii.gz"
+  ],
+  "sidecars": [
+    {
+      "path": "task-balloonanalogrisktask_bold.json",
+      "metadata": {"RepetitionTime": 2.0, "TaskName": "balloon analog risk task"}
+    },
+    {
+      "path": "sub-01/func/sub-01_task-balloonanalogrisktask_run-01_bold.json",
+      "metadata": {"RepetitionTime": 2.0}
+    }
+  ]
+}
+,
+"sources":[{"path":"sub-01/func/sub-01_task-balloonanalogrisktask_run-01_bold.json","metadata":{},"reason":"Synthetic review decision: remove the stale local RT assignment and inherit the proposed root RT 3.0; keep the empty source as provenance."}],
+"scans":[],
+"effective":[]
+}

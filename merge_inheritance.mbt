@@ -36,6 +36,7 @@ fn merge_check_scans(
   candidate : DatasetIndex,
   paths : Array[String],
   conflicts : Array[MergeConflict],
+  resolution~ : MergeResolution?,
 ) -> Unit raise TraceError {
   for path in paths {
     let be = merge_audit(base, path)
@@ -66,7 +67,8 @@ fn merge_check_scans(
     if c is None {
       // A removed scan must not silently erase the other side's provenance or
       // effective edit. Even an empty applied source is observable evidence.
-      if b is Some(_) &&
+      if !(resolution is Some(plan) && plan.scan_at(path) is Some(_)) &&
+        b is Some(_) &&
         (
           (l is Some(_) && !merge_equal(merge_metadata(b), merge_metadata(l))) ||
           (r is Some(_) && !merge_equal(merge_metadata(b), merge_metadata(r)))
@@ -95,6 +97,12 @@ fn merge_check_scans(
       let lv = merge_field(l, key)
       let rv = merge_field(r, key)
       let cv = merge_field(c, key)
+      // Assertions are checked against the resolved candidate before entering
+      // this pass. They authorize exactly this effective field, never a whole
+      // scan, another field, or any unresolved historical input.
+      if resolution is Some(plan) && plan.has_effective(path, key) {
+        continue
+      }
       // For a newly introduced scan, only snapshots which actually contain it
       // establish intent. A change in the other branch may alter its inherited
       // values; require review rather than guessing that intent.

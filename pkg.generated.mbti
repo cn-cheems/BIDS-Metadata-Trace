@@ -19,12 +19,12 @@ pub struct AcquisitionReport {
   // private fields
 }
 pub fn AcquisitionReport::decision(Self) -> ExpectationDecision
-pub fn AcquisitionReport::error_count(Self) -> Int
+pub fn AcquisitionReport::error_count(Self) -> Int32
 pub fn AcquisitionReport::to_json(Self) -> String
 pub fn AcquisitionReport::to_json_value(Self) -> Json
 pub fn AcquisitionReport::uncovered_paths(Self) -> Array[String]
 pub fn AcquisitionReport::unmatched_rule_ids(Self) -> Array[String]
-pub fn AcquisitionReport::violation_count(Self) -> Int
+pub fn AcquisitionReport::violation_count(Self) -> Int32
 
 pub struct AcquisitionRules {
   // private fields
@@ -45,7 +45,7 @@ pub struct AuditReport {
 pub fn AuditReport::check_consistency(Self, ConsistencyRules) -> ConsistencyReport
 pub fn AuditReport::check_expectations(Self, MetadataExpectations) -> ExpectationReport
 pub fn AuditReport::entries(Self) -> Array[AuditEntry]
-pub fn AuditReport::error_count(Self) -> Int
+pub fn AuditReport::error_count(Self) -> Int32
 pub fn AuditReport::filter_metadata(Self, MetadataQuery) -> MetadataSelection
 pub fn AuditReport::summarize_fields(Self, Array[String]) -> FieldSummaryReport raise TraceError
 pub fn AuditReport::to_json(Self) -> String
@@ -66,7 +66,7 @@ pub struct ConsistencyReport {
 }
 pub fn ConsistencyReport::decision(Self) -> ExpectationDecision
 pub fn ConsistencyReport::to_json(Self) -> String
-pub fn ConsistencyReport::violation_count(Self) -> Int
+pub fn ConsistencyReport::violation_count(Self) -> Int32
 
 pub struct ConsistencyRules {
   // private fields
@@ -117,7 +117,7 @@ pub(all) struct Diagnostic {
   code : String
   path : String
   message : String
-  offset : Int?
+  offset : Int32?
   related : Array[String]
 } derive(Eq, ToJson, @debug.Debug)
 pub fn Diagnostic::equal(Self, Self) -> Bool
@@ -175,10 +175,10 @@ pub struct ExpectationReport {
   // private fields
 }
 pub fn ExpectationReport::decision(Self) -> ExpectationDecision
-pub fn ExpectationReport::error_count(Self) -> Int
+pub fn ExpectationReport::error_count(Self) -> Int32
 pub fn ExpectationReport::to_json(Self) -> String
 pub fn ExpectationReport::to_json_value(Self) -> Json
-pub fn ExpectationReport::violation_count(Self) -> Int
+pub fn ExpectationReport::violation_count(Self) -> Int32
 
 pub struct FieldChange {
   // private fields
@@ -208,7 +208,7 @@ pub fn FieldOrigin::value(Self) -> Json
 pub struct FieldSummaryReport {
   // private fields
 }
-pub fn FieldSummaryReport::error_count(Self) -> Int
+pub fn FieldSummaryReport::error_count(Self) -> Int32
 pub fn FieldSummaryReport::to_json(Self) -> String
 pub fn FieldSummaryReport::to_json_value(Self) -> Json
 
@@ -235,9 +235,9 @@ pub fn ImpactKind::not_equal(Self, Self) -> Bool
 pub struct ImpactReport {
   // private fields
 }
-pub fn ImpactReport::changed_count(Self) -> Int
+pub fn ImpactReport::changed_count(Self) -> Int32
 pub fn ImpactReport::entries(Self) -> Array[ImpactEntry]
-pub fn ImpactReport::error_count(Self) -> Int
+pub fn ImpactReport::error_count(Self) -> Int32
 pub fn ImpactReport::release_check(Self, ReleasePolicy) -> ReleaseCheck
 pub fn ImpactReport::to_json(Self) -> String
 
@@ -273,10 +273,26 @@ pub struct MergeReport {
   // private fields
 }
 pub fn MergeReport::candidate(Self) -> DatasetIndex?
-pub fn MergeReport::conflict_count(Self) -> Int
+pub fn MergeReport::conflict_count(Self) -> Int32
 pub fn MergeReport::conflicts(Self) -> Array[MergeConflict]
 pub fn MergeReport::impact(Self) -> ImpactReport?
+pub fn MergeReport::reconcile(Self, MergeResolution) -> ReconciledMerge raise TraceError
+pub fn MergeReport::resolution_template(Self) -> String
 pub fn MergeReport::to_json(Self) -> String
+
+pub struct MergeResolution {
+  // private fields
+}
+pub fn MergeResolution::from_json(String) -> Self raise TraceError
+pub fn MergeResolution::to_json(Self) -> String
+
+pub struct MergeReviewBundle {
+  // private fields
+}
+pub fn MergeReviewBundle::from_json(String) -> Self raise TraceError
+pub fn MergeReviewBundle::reconciliation(Self) -> ReconciledMerge
+pub fn MergeReviewBundle::report(Self) -> ReleaseCheck
+pub fn MergeReviewBundle::to_json(Self) -> String
 
 pub struct MetadataExpectations {
   // private fields
@@ -302,7 +318,7 @@ pub struct MetadataSelection {
   // private fields
 }
 pub fn MetadataSelection::audit(Self) -> AuditReport
-pub fn MetadataSelection::error_count(Self) -> Int
+pub fn MetadataSelection::error_count(Self) -> Int32
 pub fn MetadataSelection::paths(Self) -> Array[String]
 pub fn MetadataSelection::to_json(Self) -> String
 pub fn MetadataSelection::to_json_value(Self) -> Json
@@ -320,6 +336,16 @@ pub fn PrunePlan::after(Self) -> DatasetIndex
 pub fn PrunePlan::impact(Self) -> ImpactReport
 pub fn PrunePlan::patch(Self) -> MetadataPatch
 pub fn PrunePlan::to_json(Self) -> String
+
+pub struct ReconciledMerge {
+  // private fields
+}
+pub fn ReconciledMerge::candidate(Self) -> DatasetIndex?
+pub fn ReconciledMerge::conflict_count(Self) -> Int32
+pub fn ReconciledMerge::conflicts(Self) -> Array[MergeConflict]
+pub fn ReconciledMerge::impact(Self) -> ImpactReport?
+pub fn ReconciledMerge::review_bundle(Self, ReleasePolicy) -> MergeReviewBundle raise TraceError
+pub fn ReconciledMerge::to_json(Self) -> String
 
 pub struct ReleaseCheck {
   // private fields
@@ -433,7 +459,7 @@ pub struct SourceCoverageReport {
 }
 pub fn SourceCoverageReport::diagnostics(Self) -> Array[Diagnostic]
 pub fn SourceCoverageReport::entries(Self) -> Array[SourceCoverageEntry]
-pub fn SourceCoverageReport::error_count(Self) -> Int
+pub fn SourceCoverageReport::error_count(Self) -> Int32
 pub fn SourceCoverageReport::to_json(Self) -> String
 pub fn SourceCoverageReport::unmatched_paths(Self) -> Array[String]
 
