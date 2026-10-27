@@ -1,0 +1,81 @@
+----
+import { "moonbitlang/async@0.22.5", "moonbitlang/async@0.22.5/shell", "moonbitlang/core/json" }
+----
+
+///|
+async fn main {
+  let base = "examples/ds000001/manifest.json"
+  for
+    (after, resolved) in [
+      (base, 0.0),
+      ("examples/ds000001/changed-manifest.json", 3.0),
+      ("examples/ds000001/provenance-manifest.json", 1.0),
+    ] {
+    let output = @shell.Cmd("moon", [
+      "run", "cmd/main", "--", "diff-incremental", base, after, "--verify",
+    ]).output()
+    output.check()
+    guard @json.parse(output.stdout())
+      is {
+        "full_verified": True,
+        "incremental": {
+          "analysis": { "resolved_count": Number(n, ..), .. },
+          "impact": { "error_count": Number(0.0, ..), .. },
+          ..
+        },
+        ..
+      } &&
+      n == resolved else {
+      fail("Real-path incremental CLI lost verified work accounting")
+    }
+  }
+  let ambiguous = "examples/release-check/ambiguous-manifest.json"
+  let errors = @shell.Cmd("moon", [
+    "run", "cmd/main", "--", "diff-incremental", ambiguous, ambiguous, "--verify",
+  ]).output()
+  guard errors.exit_code() == 1 &&
+    errors.stdout().contains("\"full_verified\":true") &&
+    errors.stdout().contains("ambiguous_inheritance") &&
+    errors.stdout().contains("\"resolved_count\":0") else {
+    fail("Cached error became an unchanged success")
+  }
+  for
+    args in [
+      ["diff-incremental", base, base, "--force"],
+      ["diff-incremental", base, "does-not-exist.json", "--verify"],
+    ] {
+    let output = @shell.Cmd("moon", ["run", "cmd/main", "--"] + args).output()
+    guard output.exit_code() == 1 && output.stdout().is_empty() else {
+      fail("Invalid incremental CLI input produced partial evidence")
+    }
+  }
+  // Execute actual release programs on all portable runtimes. This checks
+  // the Node argv adapter and malformed CLI inputs as well as compilation.
+  for target in ["wasm", "wasm-gc", "js"] {
+    let result = @shell.Cmd("moon", [
+      "run", "--release", "--target", target, "cmd/impact-benchmark", "--", "warm",
+      "local", "100", "3",
+    ]).output()
+    result.check()
+    guard @json.parse(result.stdout())
+      is {
+        "phase": String("warm"),
+        "scans": Number(100.0, ..),
+        "samples_us": Array([_, _, _]),
+        ..
+      } else {
+      fail("Portable benchmark launch failed")
+    }
+    let invalid = @shell.Cmd("moon", [
+      "run", "--release", "--target", target, "cmd/impact-benchmark", "--", "warm",
+      "local", "0", "3",
+    ]).output()
+    guard invalid.exit_code() != 0 &&
+      invalid.stdout().contains("invalid_impact_benchmark_arguments") else {
+      fail("Malformed portable benchmark arguments were accepted")
+    }
+  }
+  println(
+    "Verified real-path incremental/full equality, error retention and portable benchmark execution.",
+  )
+}

@@ -99,6 +99,14 @@ pub fn DatasetIndex::resolve(
   }
   let data = self.files[index]
   let candidates = self.matching_sources(data)
+  resolve_candidates(data_path, candidates)
+}
+
+///|
+fn resolve_candidates(
+  data_path : String,
+  candidates : Array[Sidecar],
+) -> ResolvedMetadata raise TraceError {
   let at_depth : Map[Int32, Array[String]] = Map([])
   for sidecar in candidates {
     let level = sidecar.selector.depth

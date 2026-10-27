@@ -40,6 +40,7 @@ async fn main {
   }
   @shell.Cmd("moon", ["run", "scripts/verify-numeric.mbtx"], env~).run()
   @shell.Cmd("moon", ["run", "scripts/verify-reconciliation.mbtx"], env~).run()
+  @shell.Cmd("moon", ["run", "scripts/verify-incremental.mbtx"], env~).run()
   let path = "sub-01/func/sub-01_task-balloonanalogrisktask_run-01_bold.nii.gz"
   let merge_base = "examples/ds000001/manifest.json"
   let merge_left = "examples/ds000001/changed-manifest.json"

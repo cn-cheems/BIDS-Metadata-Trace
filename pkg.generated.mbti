@@ -98,6 +98,7 @@ pub fn DatasetIndex::audit_all(Self) -> AuditReport
 pub fn DatasetIndex::check_acquisition(Self, AcquisitionRules) -> AcquisitionReport
 pub fn DatasetIndex::compare(Self, Self) -> ImpactReport
 pub fn DatasetIndex::data_paths(Self) -> Array[String]
+pub fn DatasetIndex::dependency_graph(Self) -> DependencyGraph raise TraceError
 pub fn DatasetIndex::from_json(String) -> Self raise TraceError
 pub fn DatasetIndex::from_manifest(Array[String], Array[SidecarInput]) -> Self raise TraceError
 pub fn DatasetIndex::merge(Self, Self, Self) -> MergeReport raise TraceError
@@ -112,6 +113,15 @@ pub fn DatasetIndex::select_metadata(Self, MetadataQuery) -> MetadataSelection
 pub fn DatasetIndex::select_scans(Self, ScanQuery) -> ScanSelection
 pub fn DatasetIndex::source_coverage(Self) -> SourceCoverageReport
 pub fn DatasetIndex::to_manifest_json(Self) -> String
+
+pub struct DependencyGraph {
+  // private fields
+}
+pub fn DependencyGraph::advance(Self, DatasetIndex) -> IncrementalImpact raise TraceError
+pub fn DependencyGraph::audit(Self) -> AuditReport
+pub fn DependencyGraph::dependents(Self, String) -> Array[String] raise TraceError
+pub fn DependencyGraph::snapshot(Self) -> DatasetIndex
+pub fn DependencyGraph::to_json(Self) -> String
 
 pub(all) struct Diagnostic {
   code : String
@@ -240,6 +250,17 @@ pub fn ImpactReport::entries(Self) -> Array[ImpactEntry]
 pub fn ImpactReport::error_count(Self) -> Int32
 pub fn ImpactReport::release_check(Self, ReleasePolicy) -> ReleaseCheck
 pub fn ImpactReport::to_json(Self) -> String
+
+pub struct IncrementalImpact {
+  // private fields
+}
+pub fn IncrementalImpact::invalidated_paths(Self) -> Array[String]
+pub fn IncrementalImpact::next(Self) -> DependencyGraph
+pub fn IncrementalImpact::report(Self) -> ImpactReport
+pub fn IncrementalImpact::resolved_count(Self) -> Int32
+pub fn IncrementalImpact::reused_count(Self) -> Int32
+pub fn IncrementalImpact::to_json(Self) -> String
+pub fn IncrementalImpact::verify_full(Self) -> Unit raise TraceError
 
 pub struct MergeConflict {
   // private fields

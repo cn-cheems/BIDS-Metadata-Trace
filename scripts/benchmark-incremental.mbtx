@@ -1,0 +1,186 @@
+----
+import {
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.5/fs",
+  "moonbitlang/async@0.22.5/shell",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+}
+----
+
+///|
+async fn incremental_command(
+  program : String,
+  args : Array[String],
+  wsl~ : Bool,
+) -> @shell.Output {
+  let cmd = if wsl {
+    @shell.Cmd("wsl.exe", ["-d", "Ubuntu", "--", program] + args)
+  } else {
+    @shell.Cmd(program, args)
+  }
+  let output = cmd.output(max_output_bytes=67108864)
+  guard output.exit_code() == 0 else {
+    fail(
+      "Incremental measurement failed:\n" + output.stdout() + output.stderr(),
+    )
+  }
+  output
+}
+
+///|
+async fn main {
+  let args = @env.args()[1:].to_owned()
+  guard args.length() >= 3 else {
+    fail(
+      "Usage: benchmark-incremental.mbtx LINUX_NATIVE_BINARY LINUX_MOON_BINARY OUTPUT_DIR [--wsl] [--quick]",
+    )
+  }
+  let flags = args[3:].to_owned()
+  guard flags == [] ||
+    flags == ["--wsl"] ||
+    flags == ["--quick"] ||
+    flags == ["--wsl", "--quick"] else {
+    fail("Unknown, repeated or misplaced collector flags")
+  }
+  let wsl = flags.contains("--wsl")
+  let output_dir = args[2]
+  @fs.mkdir(output_dir, recursive=true, allow_exist=true)
+  let summary = output_dir + "/summary.json"
+  if @fs.exists(summary) {
+    @fs.remove(summary)
+  }
+  let platform = incremental_command("uname", ["-a"], wsl~)
+    .stdout()
+    .trim()
+    .to_owned()
+  guard platform.has_prefix("Linux ") else {
+    fail("Requires Linux Native /usr/bin/time; --wsl selects local Ubuntu")
+  }
+  let binary = incremental_command("realpath", [args[0]], wsl~)
+    .stdout()
+    .trim()
+    .to_owned()
+  let digest_line = incremental_command("sha256sum", [binary], wsl~).stdout()
+  guard digest_line.length() >= 64 else { fail("Missing SHA-256 digest") }
+  let binary_digest = digest_line[:64].to_owned()
+  let cpu = incremental_command("lscpu", [], wsl~).stdout().trim().to_owned()
+  let version = incremental_command(args[1], ["version", "--all"], wsl~).stdout()
+  let collected_at = incremental_command(
+      "date",
+      ["-u", "+%Y-%m-%dT%H:%M:%SZ"],
+      wsl~,
+    )
+    .stdout()
+    .trim()
+    .to_owned()
+  let revision = @shell.Cmd("git", ["rev-parse", "HEAD"]).output()
+  revision.check()
+  let status = @shell.Cmd("git", ["status", "--porcelain"]).output()
+  status.check()
+  let sizes = if flags.contains("--quick") { [100] } else { [100, 1000, 5000] }
+  let measurements : Array[Json] = []
+  let evidence : Array[Json] = []
+  let mut ordinal = 0
+  for count in sizes {
+    for
+      shape in [
+        "local", "root", "add", "remove", "unmatched", "noop", "inventory", "ambiguity",
+      ] {
+      let verified = incremental_command(
+        binary,
+        ["verify", shape, count.to_string(), "3"],
+        wsl~,
+      ).stdout()
+      guard @json.parse(verified)
+        is { "analysis": Object(analysis), "impact": Object(impact), .. } else {
+        fail("Missing verification evidence")
+      }
+      let stem = shape + "-" + count.to_string()
+      @fs.write_file(output_dir + "/evidence-" + stem + ".json", verified)
+      evidence.push(
+        Json::object({
+          "shape": Json::string(shape),
+          "scans": Json::number(count.to_double()),
+          "analysis": Json::object(analysis),
+          "changed_count": impact["changed_count"],
+          "error_count": impact["error_count"],
+          "complete_report_equality_verified": Json::boolean(true),
+          "report_utf16_units": Json::number(verified.length().to_double()),
+        }),
+      )
+      let phases = ["full", "cold", "warm", "graph"]
+      let mut checksum : Json? = None
+      for offset in 0..<4 {
+        let phase = phases[(ordinal + offset) % 4]
+        let result = incremental_command(
+          "/usr/bin/time",
+          [
+            "-f",
+            "BIDS_RSS_KIB=%M",
+            binary,
+            phase,
+            shape,
+            count.to_string(),
+            "7",
+          ],
+          wsl~,
+        )
+        guard @json.parse(result.stdout()) is Object(fields) &&
+          fields.get("phase") == Some(Json::string(phase)) &&
+          fields.get("shape") == Some(Json::string(shape)) &&
+          fields.get("scans") == Some(Json::number(count.to_double())) else {
+          fail("Wrong measurement workload")
+        }
+        let mut rss = 0
+        for line in result.stderr().split("\n") {
+          if line.has_prefix("BIDS_RSS_KIB=") {
+            rss = @string.parse_int(line[13:])
+          }
+        }
+        guard rss > 0 else { fail("Missing process peak RSS") }
+        fields["process_peak_rss_kib"] = Json::number(rss.to_double())
+        if phase != "graph" {
+          if checksum is Some(expected) {
+            guard fields["checksum"] == expected else {
+              fail("Timed-phase result counts disagree")
+            }
+          } else {
+            checksum = Some(fields["checksum"])
+          }
+        }
+        let value = Json::object(fields)
+        measurements.push(value)
+        @fs.write_file(
+          output_dir + "/" + phase + "-" + stem + ".json",
+          value.stringify(indent=2) + "\n",
+        )
+      }
+      ordinal += 1
+      println(
+        "Measured full/cold/warm/graph and verified complete report: " + stem,
+      )
+    }
+  }
+  let report = Json::object({
+    "format": Json::string("bids-metadata-trace/incremental-measurements-v1"),
+    "collected_at": Json::string(collected_at),
+    "platform": Json::string(platform),
+    "cpu": Json::string(cpu),
+    "toolchain": Json::string(version),
+    "binary": Json::string(binary),
+    "binary_sha256": Json::string(binary_digest),
+    "revision": Json::string(revision.stdout().trim().to_owned()),
+    "working_tree": Json::boolean(!status.stdout().trim().is_empty()),
+    "worktree_status": Json::string(status.stdout()),
+    "samples_per_case": Json::number(7),
+    "measurements": Json::array(measurements),
+    "verified_cases": Json::array(evidence),
+    "timing_boundary": Json::string(
+      "Native operation only; fixture/snapshot setup, process startup, evidence serialization and full verification excluded. Warm includes next-graph rebuilding; cold includes graph construction. RSS is whole-process peak; only warm prepares a graph before timing.",
+    ),
+  })
+  @fs.write_file(summary, report.stringify(indent=2) + "\n")
+  println("Complete incremental measurements: " + summary)
+}

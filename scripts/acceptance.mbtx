@@ -67,12 +67,13 @@ async fn main {
     acceptance_command([
       "fmt", "--check", "scripts/verify.mbtx", "scripts/package-check.mbtx", "scripts/acceptance.mbtx",
       "scripts/check-acceptance-guards.mbtx", "scripts/benchmark.mbtx", "scripts/verify-numeric.mbtx",
-      "scripts/verify-reconciliation.mbtx",
+      "scripts/verify-reconciliation.mbtx", "scripts/verify-incremental.mbtx", "scripts/benchmark-incremental.mbtx",
     ]),
   )
   ignore(acceptance_command(["-C", "examples/consumer", "fmt", "--check"]))
   let interfaces = [
     "pkg.generated.mbti", "cmd/main/pkg.generated.mbti", "cmd/benchmark/pkg.generated.mbti",
+    "cmd/impact-benchmark/pkg.generated.mbti",
   ]
   let before : Array[String] = []
   for path in interfaces {

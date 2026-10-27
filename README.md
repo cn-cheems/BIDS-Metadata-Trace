@@ -361,3 +361,13 @@ To reproduce a failing review, export `plan-changes examples/ds000001/manifest.j
 Blocked merges can now accept snapshot-bound source/scan decisions and exact
 effective-field assertions, revalidate all inherited scan outcomes, and export
 independently replayable merge review bundles. See [the complete workflow](docs/reconciliation.md).
+
+## Incremental impact for repeated reviews
+
+`DatasetIndex::dependency_graph()` caches full inheritance results and source
+dependencies; `DependencyGraph::advance(after)` resolves affected scans and
+returns a complete impact report plus the next immutable graph. Added sources,
+ambiguities, shadowed provenance and inventory edits are covered. The optional
+`verify_full()` compares the full report byte for byte with ordinary comparison.
+CLI: `diff-incremental BEFORE.json AFTER.json --verify`. See [the API and offline
+examples](docs/incremental.md) and [measured costs](docs/incremental-performance.md).

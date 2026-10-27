@@ -47,3 +47,12 @@ Additional modalities, larger snapshot limits and schema-level BIDS validation r
 `moon run scripts/verify-reconciliation.mbtx` demonstrates blocked merge ->
 content-bound decisions -> full revalidation -> manifest export -> merge review
 replay. The unified gate runs it automatically. See [the complete example](reconciliation.md).
+
+## Incremental impact and full equivalence
+
+`moon run scripts/verify-incremental.mbtx` executes attributed real-path comparisons
+with actual work counts, optional full verification, cached error retention,
+input/option rejection and actual portable release benchmark launches. The
+unified gate includes it. [Library workflows](incremental.md) explain repeated
+in-memory adoption; [performance reproduction](incremental-performance.md)
+distinguishes setup, first-use and reuse costs.

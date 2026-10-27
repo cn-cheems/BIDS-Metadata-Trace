@@ -167,3 +167,30 @@ including both release policies, stale plans, unsupported options and recovery.
 The actual release ZIP's independent consumer ran on Wasm/Wasm-GC/JS and Native;
 no Mooncakes publication was attempted. Local Native uses WSL/GCC; Windows Native
 is verified by the CI matrix with MSVC. Remote results are checked after push.
+# Dependency-driven incremental impact — 2026-10-27
+
+Stable 0.10.17+d971670cd passed formatting/interface checks, strict all-target
+compilation and actual execution: Wasm 254 tests; Wasm-GC, JS and WSL/GCC Native 248
+each. Eleven new tests cover all current graph dependencies, defensive accessors,
+empty/shadowed/unmatched sources, added-source candidate discovery, normalized
+entities, ambiguous cached errors and recovery, combined scan/source inventory,
+exact number tokens, null/absence/nested unknown values, deterministic graph
+evidence, 125 chained updates, 48 local-source transitions, edge-count boundaries
+and deliberate mismatch rejection followed by a valid retry. Every incremental
+case checks the complete report against the unmodified full comparison.
+The CLI verifies real-path source additions/root edits and work counts, retains
+cached ambiguity, rejects invalid controls, and executes actual release benchmark
+programs plus malformed inputs on Wasm/Wasm-GC/JS. The release ZIP's independent
+consumer verifies graph advance, exact full equivalence and chained recovery on
+all four targets. Native execution uses cached async 0.22.5 as an extra workspace
+member because WSL DNS cannot access the registry; sources are unchanged.
+
+The new Native release benchmark collected 96 timing cases (full/cold/warm/graph,
+100/1000/5000 scans, eight change shapes) and 24 byte-identical complete-report
+checks. Seven raw samples, whole-process RSS, binary digest, compiler/runtime,
+parent revision and dirty status are retained. No local builds/tests ran during
+collection. Results include slower first-use root/ambiguity cases and increased
+memory; see `docs/incremental-performance.md`. No registry publication occurred.
+
+Explicit reconciliation commit `ceae5a5` passed all Linux/macOS/Windows jobs in
+[CI run 40461576523](https://github.com/cn-cheems/BIDS-Metadata-Trace/actions/runs/40461576523).

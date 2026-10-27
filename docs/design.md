@@ -69,3 +69,11 @@ Redundant override pruning requires all indexed scans to resolve before/after wi
 Content-bound source/scan decisions and exact effective-field assertions now
 extend blocked merge review through full inheritance revalidation and replayable
 merge bundles. See [contract and complete example](reconciliation.md).
+
+## Dependency-driven impact
+
+An explicit immutable graph caches all applicable sources and resolution
+results/errors. Added-source candidate lookup and old reverse edges identify
+affected scans. Each transition produces the ordinary complete impact report
+and next graph; optional full comparison establishes complete output agreement.
+See [algorithm, limits and workflows](incremental.md).

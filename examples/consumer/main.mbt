@@ -97,5 +97,17 @@ fn main raise {
     reconciled.conflict_count() == 0 else {
     fail("Archive consumer failed explicit merge review replay")
   }
+  let incremental = baseline.dependency_graph().advance(plan.after())
+  incremental.verify_full()
+  guard incremental.invalidated_paths() == [post] &&
+    incremental.resolved_count() == 1 &&
+    incremental.reused_count() == 1 else {
+    fail("Archive consumer failed incremental source-add invalidation")
+  }
+  let recovered = incremental.next().advance(baseline)
+  recovered.verify_full()
+  guard recovered.next().audit().to_json() == baseline.audit_all().to_json() else {
+    fail("Archive consumer failed chained graph update")
+  }
   println("{\"consumer\":\"passed\",\"changed_scans\":1,\"scans\":2}")
 }

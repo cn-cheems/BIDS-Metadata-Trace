@@ -93,3 +93,15 @@ format, implementation and tests are authored Apache-2.0 work. The synthetic
 decision fixture reuses the already attributed CC0 ds000001 subset; no external
 merge or incremental engine code/test cases were copied. Related work and bounded
 search uncertainty are recorded in `docs/reconciliation.md`.
+
+## Incremental impact
+
+The immutable dependency/cache model, BIDS selector invalidation, incremental
+impact API/CLI, full-comparison oracle tests and synthetic benchmark/collector
+are authored Apache-2.0 work. Full comparison is this repository's existing
+implementation. Generic incremental-computation and dependency-solver packages
+are related work, with bounded search uncertainty recorded in `docs/incremental.md`;
+no code or tests were copied from them. Existing real-path fixture attribution
+is unchanged. New timings are independent measurements with a recorded binary,
+toolchain, host, parent revision and worktree state; prior performance results
+are retained as historical observations.

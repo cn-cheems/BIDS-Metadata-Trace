@@ -4,6 +4,7 @@ extern "wasm" fn exit(code : Int32) -> Unit = "wasi_snapshot_preview1" "proc_exi
 
 ///|
 fn usage() -> String {
+  "Incremental: diff-incremental BEFORE.json AFTER.json [--verify]\n" +
   "Reconciliation: merge BASE.json LEFT.json RIGHT.json --resolution-template | reconcile BASE.json LEFT.json RIGHT.json RESOLUTION.json [--manifest-only|--bundle|--effective-bundle] | replay-merge BUNDLE.json\n" +
   "Usage: bids-metadata-trace discover DATASET_DIR [--manifest-only] | select MANIFEST.json QUERY.json [--audit] | filter MANIFEST.json METADATA_QUERY.json [DATA_PATH ...] | acquisition MANIFEST.json RULES.json | sources MANIFEST.json | summarize MANIFEST.json FIELD... | table MANIFEST.json FIELD... | expect MANIFEST.json EXPECTATIONS.json [DATA_PATH ...] | plan MANIFEST.json SIDECAR_PATH PATCH.json [--manifest-only] | plan-batch MANIFEST.json BATCH.json [--manifest-only] | plan-sources MANIFEST.json CHANGES.json [--manifest-only] | plan-scans MANIFEST.json SCAN_CHANGES.json [--manifest-only] | plan-changes MANIFEST.json CHANGES.json [--manifest-only] | merge BASE.json LEFT.json RIGHT.json [--manifest-only] | prune MANIFEST.json SIDECAR_PATH FIELD... | consistency MANIFEST.json RULES.json [DATA_PATH ...] | bundle BEFORE.json AFTER.json [--effective-only] | replay BUNDLE.json | resolve MANIFEST.json DATA_PATH | audit MANIFEST.json [DATA_PATH ...] | diff BEFORE.json AFTER.json | check BEFORE.json AFTER.json [--effective-only]"
 }
@@ -218,6 +219,10 @@ async fn main {
       args.length() >= 4
     ) ||
     (args[1] == "acquisition" && args.length() == 4) ||
+    (
+      args[1] == "diff-incremental" &&
+      (args.length() == 4 || (args.length() == 5 && args[4] == "--verify"))
+    ) ||
     (
       args[1] == "select" &&
       (args.length() == 4 || (args.length() == 5 && args[4] == "--audit"))
@@ -504,6 +509,22 @@ async fn main {
         Pass => ()
         ChangesDetected => exit(1)
         Indeterminate => exit(1)
+      }
+    } else if args[1] == "diff-incremental" {
+      let result = index.dependency_graph().advance(load_manifest(args[3]))
+      let verified = args.length() == 5
+      if verified {
+        result.verify_full()
+      }
+      println(
+        "{\"full_verified\":" +
+        verified.to_string() +
+        ",\"incremental\":" +
+        result.to_json() +
+        "}",
+      )
+      if result.report().error_count() > 0 {
+        exit(1)
       }
     } else if args[1] == "diff" {
       let report = index.compare(load_manifest(args[3]))
